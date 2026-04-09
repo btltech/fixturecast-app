@@ -1,0 +1,63 @@
+name: Deploy Public Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy'
+        required: true
+        default: 'backend-api'
+        type: choice
+        options:
+          - backend-api
+          - bots
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements-backend.txt --quiet
+
+      - name: Backend import smoke test
+        working-directory: backend
+        run: |
+          python -c "import main; print('main imports OK')"
+          python -c "import database; print('database imports OK')"
+          python -c "import api_client; print('api_client imports OK')"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: curl -fsSL https://raw.githubusercontent.com/railwayapp/cli/master/install.sh | sh
+
+      - name: Link Railway project
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        run: railway link -p "$RAILWAY_PROJECT_ID" -e production
+
+      - name: Deploy selected service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+          if [ "$SERVICE" = "bots" ]; then
+            echo "Deploy bot services from Railway UI or separate workflow as needed"
+            exit 0
+          fi
+          railway up --service backend-api -d

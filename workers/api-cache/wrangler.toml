@@ -1,0 +1,13 @@
+name = "fixturecast-api-cache"
+main = "index.js"
+compatibility_date = "2024-02-23"
+
+# Custom domains — Cloudflare will automatically create DNS records
+# and route ALL traffic on these subdomains to this Worker
+[[routes]]
+pattern = "api.fixturecast.com"
+custom_domain = true
+
+[[routes]]
+pattern = "ml.fixturecast.com"
+custom_domain = true

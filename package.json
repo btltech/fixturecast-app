@@ -1,0 +1,14 @@
+{
+  "name": "fixturecast-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FixtureCast public app repo",
+  "scripts": {
+    "frontend": "cd frontend && npm run dev",
+    "backend": "cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8001",
+    "start": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

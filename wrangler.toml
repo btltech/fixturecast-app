@@ -1,0 +1,18 @@
+# Cloudflare Pages Configuration
+# Build command: npm run build
+# Build output directory: dist
+# Root directory: frontend
+
+[build]
+  command = "npm run build"
+  cwd = "frontend"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[vars]
+VITE_ML_API_URL = "https://ml.fixturecast.com"
+VITE_API_URL = "https://api.fixturecast.com"
+VITE_BACKEND_API_URL = "https://api.fixturecast.com"
+VITE_BACKEND_API = "https://api.fixturecast.com"
+VITE_ML_API = "https://ml.fixturecast.com"

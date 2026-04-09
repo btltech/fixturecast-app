@@ -1,0 +1,632 @@
+[
+  {
+    "id": 1,
+    "name": "FIFA World Cup",
+    "country": "World",
+    "emoji": "🌍",
+    "tier": 0
+  },
+  {
+    "id": 29,
+    "name": "WCQ - South America",
+    "country": "World",
+    "emoji": "🌎",
+    "tier": 0
+  },
+  {
+    "id": 30,
+    "name": "WCQ - Asia",
+    "country": "World",
+    "emoji": "🌏",
+    "tier": 0
+  },
+  {
+    "id": 31,
+    "name": "WCQ - CONCACAF",
+    "country": "World",
+    "emoji": "🌎",
+    "tier": 0
+  },
+  {
+    "id": 32,
+    "name": "WCQ - Europe",
+    "country": "World",
+    "emoji": "🌍",
+    "tier": 0
+  },
+  {
+    "id": 34,
+    "name": "WCQ - Africa",
+    "country": "World",
+    "emoji": "🌍",
+    "tier": 0
+  },
+  {
+    "id": 15,
+    "name": "FIFA Club World Cup",
+    "country": "World",
+    "emoji": "🏆",
+    "tier": 0
+  },
+  {
+    "id": 17,
+    "name": "AFC Champions League Elite",
+    "country": "Asia",
+    "emoji": "🏆",
+    "tier": 0
+  },
+  {
+    "id": 16,
+    "name": "CONCACAF Champions Cup",
+    "country": "North America",
+    "emoji": "🏆",
+    "tier": 0
+  },
+  {
+    "id": 22,
+    "name": "CONCACAF Gold Cup",
+    "country": "North America",
+    "emoji": "🥇",
+    "tier": 0
+  },
+  {
+    "id": 6,
+    "name": "AFCON",
+    "country": "Africa",
+    "emoji": "🏆",
+    "tier": 0
+  },
+  {
+    "id": 2,
+    "name": "Champions League",
+    "country": "Europe",
+    "emoji": "🏆",
+    "tier": 0
+  },
+  {
+    "id": 3,
+    "name": "Europa League",
+    "country": "Europe",
+    "emoji": "🥈",
+    "tier": 0
+  },
+  {
+    "id": 848,
+    "name": "Conference League",
+    "country": "Europe",
+    "emoji": "🥉",
+    "tier": 0
+  },
+  {
+    "id": 5,
+    "name": "UEFA Nations League",
+    "country": "Europe",
+    "emoji": "🌍",
+    "tier": 0
+  },
+  {
+    "id": 13,
+    "name": "Copa Libertadores",
+    "country": "South America",
+    "emoji": "🏆",
+    "tier": 0
+  },
+  {
+    "id": 11,
+    "name": "Copa Sudamericana",
+    "country": "South America",
+    "emoji": "🥈",
+    "tier": 0
+  },
+  {
+    "id": 12,
+    "name": "CAF Champions League",
+    "country": "Africa",
+    "emoji": "🌍",
+    "tier": 0
+  },
+  {
+    "id": 39,
+    "name": "Premier League",
+    "country": "England",
+    "emoji": "🏴",
+    "tier": 1
+  },
+  {
+    "id": 140,
+    "name": "La Liga",
+    "country": "Spain",
+    "emoji": "🇪🇸",
+    "tier": 1
+  },
+  {
+    "id": 135,
+    "name": "Serie A",
+    "country": "Italy",
+    "emoji": "🇮🇹",
+    "tier": 1
+  },
+  {
+    "id": 78,
+    "name": "Bundesliga",
+    "country": "Germany",
+    "emoji": "🇩🇪",
+    "tier": 1
+  },
+  {
+    "id": 61,
+    "name": "Ligue 1",
+    "country": "France",
+    "emoji": "🇫🇷",
+    "tier": 1
+  },
+  {
+    "id": 88,
+    "name": "Eredivisie",
+    "country": "Netherlands",
+    "emoji": "🇳🇱",
+    "tier": 1
+  },
+  {
+    "id": 94,
+    "name": "Primeira Liga",
+    "country": "Portugal",
+    "emoji": "🇵🇹",
+    "tier": 1
+  },
+  {
+    "id": 218,
+    "name": "Austrian Bundesliga",
+    "country": "Austria",
+    "emoji": "🇦🇹",
+    "tier": 1
+  },
+  {
+    "id": 207,
+    "name": "Swiss Super League",
+    "country": "Switzerland",
+    "emoji": "🇨🇭",
+    "tier": 1
+  },
+  {
+    "id": 119,
+    "name": "Danish Superliga",
+    "country": "Denmark",
+    "emoji": "🇩🇰",
+    "tier": 1
+  },
+  {
+    "id": 113,
+    "name": "Allsvenskan",
+    "country": "Sweden",
+    "emoji": "🇸🇪",
+    "tier": 1
+  },
+  {
+    "id": 103,
+    "name": "Eliteserien",
+    "country": "Norway",
+    "emoji": "🇳🇴",
+    "tier": 1
+  },
+  {
+    "id": 307,
+    "name": "Saudi Pro League",
+    "country": "Saudi Arabia",
+    "emoji": "🇸🇦",
+    "tier": 1
+  },
+  {
+    "id": 71,
+    "name": "Brasileirão",
+    "country": "Brazil",
+    "emoji": "🇧🇷",
+    "tier": 1
+  },
+  {
+    "id": 203,
+    "name": "Süper Lig",
+    "country": "Turkey",
+    "emoji": "🇹🇷",
+    "tier": 1
+  },
+  {
+    "id": 253,
+    "name": "MLS",
+    "country": "USA",
+    "emoji": "🇺🇸",
+    "tier": 1
+  },
+  {
+    "id": 179,
+    "name": "Scottish Premiership",
+    "country": "Scotland",
+    "emoji": "🏴",
+    "tier": 1
+  },
+  {
+    "id": 144,
+    "name": "Belgian Pro League",
+    "country": "Belgium",
+    "emoji": "🇧🇪",
+    "tier": 1
+  },
+  {
+    "id": 128,
+    "name": "Argentine Primera División",
+    "country": "Argentina",
+    "emoji": "🇦🇷",
+    "tier": 1
+  },
+  {
+    "id": 262,
+    "name": "Liga MX",
+    "country": "Mexico",
+    "emoji": "🇲🇽",
+    "tier": 1
+  },
+  {
+    "id": 98,
+    "name": "J1 League",
+    "country": "Japan",
+    "emoji": "🇯🇵",
+    "tier": 1
+  },
+  {
+    "id": 239,
+    "name": "Colombian Primera A",
+    "country": "Colombia",
+    "emoji": "🇨🇴",
+    "tier": 1
+  },
+  {
+    "id": 265,
+    "name": "Chilean Primera",
+    "country": "Chile",
+    "emoji": "🇨🇱",
+    "tier": 1
+  },
+  {
+    "id": 292,
+    "name": "K League 1",
+    "country": "South Korea",
+    "emoji": "🇰🇷",
+    "tier": 1
+  },
+  {
+    "id": 323,
+    "name": "Indian Super League",
+    "country": "India",
+    "emoji": "🇮🇳",
+    "tier": 1
+  },
+  {
+    "id": 435,
+    "name": "UAE Pro League",
+    "country": "UAE",
+    "emoji": "🇦🇪",
+    "tier": 1
+  },
+  {
+    "id": 233,
+    "name": "Egyptian Premier League",
+    "country": "Egypt",
+    "emoji": "🇪🇬",
+    "tier": 1
+  },
+  {
+    "id": 289,
+    "name": "South African PSL",
+    "country": "South Africa",
+    "emoji": "🇿🇦",
+    "tier": 1
+  },
+  {
+    "id": 200,
+    "name": "Moroccan Botola Pro",
+    "country": "Morocco",
+    "emoji": "🇲🇦",
+    "tier": 1
+  },
+  {
+    "id": 213,
+    "name": "Tunisian Ligue 1",
+    "country": "Tunisia",
+    "emoji": "🇹🇳",
+    "tier": 1
+  },
+  {
+    "id": 198,
+    "name": "Algerian Ligue Pro 1",
+    "country": "Algeria",
+    "emoji": "🇩🇿",
+    "tier": 1
+  },
+  {
+    "id": 332,
+    "name": "Nigerian Pro League",
+    "country": "Nigeria",
+    "emoji": "🇳🇬",
+    "tier": 1
+  },
+  {
+    "id": 338,
+    "name": "Ghanaian Premier League",
+    "country": "Ghana",
+    "emoji": "🇬🇭",
+    "tier": 1
+  },
+  {
+    "id": 197,
+    "name": "Greek Super League",
+    "country": "Greece",
+    "emoji": "🇬🇷",
+    "tier": 1
+  },
+  {
+    "id": 106,
+    "name": "Polish Ekstraklasa",
+    "country": "Poland",
+    "emoji": "🇵🇱",
+    "tier": 1
+  },
+  {
+    "id": 271,
+    "name": "Israeli Premier League",
+    "country": "Israel",
+    "emoji": "🇮🇱",
+    "tier": 1
+  },
+  {
+    "id": 283,
+    "name": "Romanian Liga 1",
+    "country": "Romania",
+    "emoji": "🇷🇴",
+    "tier": 1
+  },
+  {
+    "id": 345,
+    "name": "Czech First League",
+    "country": "Czech Republic",
+    "emoji": "🇨🇿",
+    "tier": 1
+  },
+  {
+    "id": 235,
+    "name": "Russian Premier League",
+    "country": "Russia",
+    "emoji": "🇷🇺",
+    "tier": 1
+  },
+  {
+    "id": 333,
+    "name": "Ukrainian Premier League",
+    "country": "Ukraine",
+    "emoji": "🇺🇦",
+    "tier": 1
+  },
+  {
+    "id": 210,
+    "name": "Croatian HNL",
+    "country": "Croatia",
+    "emoji": "🇭🇷",
+    "tier": 1
+  },
+  {
+    "id": 286,
+    "name": "Serbian SuperLiga",
+    "country": "Serbia",
+    "emoji": "🇷🇸",
+    "tier": 1
+  },
+  {
+    "id": 188,
+    "name": "A-League",
+    "country": "Australia",
+    "emoji": "🇦🇺",
+    "tier": 1
+  },
+  {
+    "id": 116,
+    "name": "Faroese Premier League",
+    "country": "Faroe Islands",
+    "emoji": "🇫🇴",
+    "tier": 2
+  },
+  {
+    "id": 183,
+    "name": "Maltese Premier League",
+    "country": "Malta",
+    "emoji": "🇲🇹",
+    "tier": 2
+  },
+  {
+    "id": 244,
+    "name": "Finnish Veikkausliiga",
+    "country": "Finland",
+    "emoji": "🇫🇮",
+    "tier": 2
+  },
+  {
+    "id": 164,
+    "name": "Icelandic Úrvalsdeild",
+    "country": "Iceland",
+    "emoji": "🇮🇸",
+    "tier": 2
+  },
+  {
+    "id": 169,
+    "name": "Chinese Super League",
+    "country": "China",
+    "emoji": "🇨🇳",
+    "tier": 2
+  },
+  {
+    "id": 296,
+    "name": "Thai League 1",
+    "country": "Thailand",
+    "emoji": "🇹🇭",
+    "tier": 2
+  },
+  {
+    "id": 278,
+    "name": "Malaysian Super League",
+    "country": "Malaysia",
+    "emoji": "🇲🇾",
+    "tier": 2
+  },
+  {
+    "id": 340,
+    "name": "Vietnam V-League 1",
+    "country": "Vietnam",
+    "emoji": "🇻🇳",
+    "tier": 2
+  },
+  {
+    "id": 255,
+    "name": "USL Championship",
+    "country": "USA",
+    "emoji": "🇺🇸",
+    "tier": 2
+  },
+  {
+    "id": 40,
+    "name": "Championship",
+    "country": "England",
+    "emoji": "🏴",
+    "tier": 2
+  },
+  {
+    "id": 141,
+    "name": "Segunda División",
+    "country": "Spain",
+    "emoji": "🇪🇸",
+    "tier": 2
+  },
+  {
+    "id": 136,
+    "name": "Serie B",
+    "country": "Italy",
+    "emoji": "🇮🇹",
+    "tier": 2
+  },
+  {
+    "id": 79,
+    "name": "2. Bundesliga",
+    "country": "Germany",
+    "emoji": "🇩🇪",
+    "tier": 2
+  },
+  {
+    "id": 62,
+    "name": "Ligue 2",
+    "country": "France",
+    "emoji": "🇫🇷",
+    "tier": 2
+  },
+  {
+    "id": 41,
+    "name": "League One",
+    "country": "England",
+    "emoji": "🏴",
+    "tier": 2
+  },
+  {
+    "id": 42,
+    "name": "League Two",
+    "country": "England",
+    "emoji": "🏴",
+    "tier": 2
+  },
+  {
+    "id": 43,
+    "name": "National League",
+    "country": "England",
+    "emoji": "🏴",
+    "tier": 2
+  },
+  {
+    "id": 45,
+    "name": "FA Cup",
+    "country": "England",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 48,
+    "name": "League Cup",
+    "country": "England",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 46,
+    "name": "EFL Trophy",
+    "country": "England",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 81,
+    "name": "DFB-Pokal",
+    "country": "Germany",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 137,
+    "name": "Coppa Italia",
+    "country": "Italy",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 143,
+    "name": "Copa del Rey",
+    "country": "Spain",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 66,
+    "name": "Coupe de France",
+    "country": "France",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 181,
+    "name": "Scottish FA Cup",
+    "country": "Scotland",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 73,
+    "name": "Copa do Brasil",
+    "country": "Brazil",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 130,
+    "name": "Copa Argentina",
+    "country": "Argentina",
+    "emoji": "🏆",
+    "tier": 3
+  },
+  {
+    "id": 8,
+    "name": "International Friendlies",
+    "country": "World",
+    "emoji": "🤝",
+    "tier": 4
+  },
+  {
+    "id": 9,
+    "name": "Club Friendlies",
+    "country": "World",
+    "emoji": "⚽",
+    "tier": 4
+  }
+]

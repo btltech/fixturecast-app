@@ -1,0 +1,12 @@
+# Backend API dependencies only (no ML libraries)
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+slowapi>=0.1.9
+redis>=5.0.0
+pg8000>=1.31.1
+requests>=2.31.0
+Pillow>=10.0.0
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+httpx>=0.24.0
+apscheduler>=3.10.0

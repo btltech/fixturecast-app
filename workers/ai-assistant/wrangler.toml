@@ -1,0 +1,10 @@
+name = "ai-assistant-simple"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "f00e18bfc6a44f3d876bd4448003e1f5"

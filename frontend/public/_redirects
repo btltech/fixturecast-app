@@ -1,0 +1,8 @@
+/robots.txt /robots.txt 200
+/default-og.png /default-og.png 200
+/manifest.json /manifest.json 200
+/sw.js /sw.js 200
+/favicon.svg /favicon.svg 200
+/c981f578e26871b13da98e23fdc87ef2.txt /c981f578e26871b13da98e23fdc87ef2.txt 200
+/icons/* /icons/:splat 200
+/* /index.html 200

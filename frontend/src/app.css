@@ -1,0 +1,1095 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================
+   ANIMATION TOKENS & CSS VARIABLES
+   ===================================================== */
+:root {
+  --bg-primary: #0b0e14;
+  --bg-secondary: #151b28;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+
+  /* Animation timing tokens */
+  --duration-instant: 70ms;
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --duration-slow: 300ms;
+  --duration-page: 120ms;
+
+  /* Easing curves - GPU-optimized */
+  --ease-out-soft: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  @apply font-sans antialiased;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: contain;
+}
+
+/* =====================================================
+   PAGE TRANSITION ANIMATIONS
+   ===================================================== */
+.page-enter {
+  animation: pageEnter var(--duration-page) var(--ease-out-smooth) forwards;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered entrance for lists */
+.stagger-enter > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: itemEnter var(--duration-normal) var(--ease-out-smooth) forwards;
+}
+
+.stagger-enter > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.stagger-enter > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+
+.stagger-enter > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+
+.stagger-enter > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+
+.stagger-enter > *:nth-child(5) {
+  animation-delay: 120ms;
+}
+
+.stagger-enter > *:nth-child(6) {
+  animation-delay: 150ms;
+}
+
+.stagger-enter > *:nth-child(n + 7) {
+  animation-delay: 180ms;
+}
+
+@keyframes itemEnter {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Content fade-in with slide */
+.content-enter {
+  animation: contentEnter var(--duration-page) var(--ease-out-smooth) forwards;
+}
+
+@keyframes contentEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =====================================================
+   GLASSMORPHISM UTILITIES
+   ===================================================== */
+.glass {
+  @apply backdrop-blur-xl border;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glass-card {
+  @apply backdrop-blur-lg border rounded-2xl;
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.4) 0%,
+    rgba(15, 23, 42, 0.6) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 20px -1px rgba(0, 0, 0, 0.2);
+  transition:
+    transform var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    border-color var(--duration-fast) var(--ease-out-soft);
+}
+
+.glass-card:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.5) 0%,
+    rgba(15, 23, 42, 0.7) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* =====================================================
+   MICRO-INTERACTION ANIMATIONS
+   ===================================================== */
+
+/* Button press effect */
+.btn-press {
+  transition:
+    transform var(--duration-instant) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
+  will-change: transform;
+}
+
+.btn-press:hover {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* Interactive card hover */
+.card-interactive {
+  transition:
+    transform var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-normal) var(--ease-out-soft);
+  will-change: transform;
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.card-interactive:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Tab/nav item indicator animation */
+.nav-indicator {
+  transition:
+    transform var(--duration-normal) var(--ease-out-smooth),
+    opacity var(--duration-normal) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
+}
+
+/* Icon scale on hover */
+.icon-hover {
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+.icon-hover:hover {
+  transform: scale(1.1);
+}
+
+/* Glow effect for primary buttons */
+.btn-glow {
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    transform var(--duration-instant) var(--ease-out-soft);
+}
+
+.btn-glow:hover {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.btn-glow:active {
+  transform: scale(0.97);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+/* =====================================================
+   SKELETON LOADER ANIMATIONS
+   ===================================================== */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Skeleton fade-out when data loads */
+.skeleton-exit {
+  animation: skeletonExit 100ms var(--ease-out-soft) forwards;
+}
+
+@keyframes skeletonExit {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* =====================================================
+   PREDICTION PANEL ANIMATIONS
+   ===================================================== */
+.prediction-reveal {
+  animation: predictionReveal 130ms var(--ease-out-smooth) forwards;
+}
+
+@keyframes predictionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Loading spinner refined */
+.loading-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Progress pulse for loading states */
+.loading-pulse {
+  animation: loadingPulse 1.5s var(--ease-in-out) infinite;
+}
+
+@keyframes loadingPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* =====================================================
+   DATA TRANSITION ANIMATIONS
+   ===================================================== */
+/* For when real data replaces skeleton */
+.data-appear {
+  animation: dataAppear 100ms var(--ease-out-soft) forwards;
+}
+
+@keyframes dataAppear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Probability bar fill animation */
+.bar-fill {
+  transition: width var(--duration-slow) var(--ease-out-smooth);
+}
+
+/* Score/number counter effect */
+.number-pop {
+  animation: numberPop var(--duration-fast) var(--ease-spring);
+}
+
+@keyframes numberPop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* =====================================================
+   CARD INTERACTION UTILITIES (GPU-ACCELERATED)
+   ===================================================== */
+
+/* Fixture card hover */
+.fixture-card {
+  transition:
+    transform var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
+  will-change: transform;
+}
+
+.fixture-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* Team card hover with lift */
+.team-card {
+  transition:
+    transform var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
+  will-change: transform;
+}
+
+.team-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+}
+
+/* Result card subtle hover */
+.result-card {
+  transition:
+    transform var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
+}
+
+.result-card:hover {
+  transform: translateX(4px);
+}
+
+/* Live match card pulse effect */
+.live-match-card {
+  transition:
+    transform var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
+}
+
+.live-match-card:hover {
+  transform: scale(1.01);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+}
+
+/* Button interaction refined */
+.btn-interact {
+  transition:
+    transform var(--duration-instant) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
+  will-change: transform;
+}
+
+.btn-interact:active {
+  transform: scale(0.97);
+}
+
+/* Element entrance animation */
+.element-enter {
+  animation: elementEnter var(--duration-fast) var(--ease-out-smooth) forwards;
+}
+
+@keyframes elementEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger delays */
+.stagger-1 {
+  animation-delay: 30ms;
+}
+
+.stagger-2 {
+  animation-delay: 60ms;
+}
+
+.stagger-3 {
+  animation-delay: 90ms;
+}
+
+.stagger-4 {
+  animation-delay: 120ms;
+}
+
+.stagger-5 {
+  animation-delay: 150ms;
+}
+
+.stagger-6 {
+  animation-delay: 180ms;
+}
+
+/* Navigation link smooth transition */
+.nav-link {
+  transition: color var(--duration-fast) var(--ease-out-soft);
+}
+
+/* Mobile drawer slide animation */
+.mobile-drawer {
+  transform: translateX(100%);
+  transition: transform var(--duration-normal) var(--ease-out-smooth);
+  will-change: transform;
+}
+
+.mobile-drawer.open {
+  transform: translateX(0);
+}
+
+/* Menu item hover */
+.menu-item {
+  transition: background-color var(--duration-fast) var(--ease-out-soft);
+}
+
+/* Search input focus */
+.search-input {
+  transition:
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
+}
+
+/* Search results dropdown */
+.search-results {
+  animation: searchReveal var(--duration-fast) var(--ease-out-smooth);
+}
+
+@keyframes searchReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search item hover */
+.search-item {
+  transition: background-color var(--duration-fast) var(--ease-out-soft);
+}
+
+/* =====================================================
+   MOBILE-FIRST RESPONSIVE UTILITIES
+   ===================================================== */
+
+/* Touch-friendly minimum sizes (44px is Apple's recommendation) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Enhanced touch feedback */
+.touch-active {
+  position: relative;
+  overflow: hidden;
+}
+
+.touch-active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--touch-x, 50%) var(--touch-y, 50%),
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+  pointer-events: none;
+}
+
+.touch-active:active::after {
+  opacity: 1;
+}
+
+/* Safe areas for notched devices */
+.safe-top {
+  padding-top: max(1rem, var(--safe-area-inset-top));
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+}
+
+/* Swipe indicator for gesture navigation */
+.swipe-indicator {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.swipe-indicator.left {
+  left: 0;
+  background: linear-gradient(to right, rgba(0, 212, 255, 0.2), transparent);
+  border-radius: 0 40px 40px 0;
+}
+
+.swipe-indicator.right {
+  right: 0;
+  background: linear-gradient(to left, rgba(0, 212, 255, 0.2), transparent);
+  border-radius: 40px 0 0 40px;
+}
+
+.swipe-indicator.visible {
+  opacity: 1;
+}
+
+/* Mobile-optimized scrolling */
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-snap-item {
+  scroll-snap-align: start;
+}
+
+/* Hide scrollbars but keep functionality on mobile */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile card styles with better touch feedback */
+.mobile-card {
+  @apply glass-card p-4;
+  transition:
+    transform var(--duration-instant) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
+}
+
+.mobile-card:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Bottom sheet overlay for mobile */
+.bottom-sheet {
+  @apply fixed inset-x-0 bottom-0 z-50 rounded-t-3xl;
+  background: var(--bg-secondary);
+  padding-bottom: var(--safe-area-inset-bottom);
+  max-height: 85vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform var(--duration-slow) var(--ease-out-smooth);
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.bottom-sheet-handle {
+  @apply w-10 h-1 bg-slate-600 rounded-full mx-auto mt-3 mb-4;
+}
+
+/* Improved mobile typography */
+@media (max-width: 640px) {
+  h1 {
+    @apply text-2xl;
+  }
+
+  h2 {
+    @apply text-xl;
+  }
+
+  h3 {
+    @apply text-lg;
+  }
+
+  /* Larger tap targets on mobile */
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+  }
+
+  /* Better spacing for mobile */
+  .mobile-p {
+    @apply px-4 py-3;
+  }
+
+  .mobile-gap {
+    @apply gap-3;
+  }
+
+  /* Mobile-optimized cards with better touch feedback */
+  .glass-card {
+    transition:
+      transform 0.1s ease-out,
+      background-color 0.1s ease-out,
+      box-shadow 0.1s ease-out;
+  }
+
+  .glass-card:active {
+    transform: scale(0.98);
+    background: linear-gradient(
+      145deg,
+      rgba(30, 41, 59, 0.6) 0%,
+      rgba(15, 23, 42, 0.8) 100%
+    );
+  }
+
+  /* Prevent text selection on interactive elements */
+  .touch-target,
+  button,
+  a[href],
+  [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Better bottom nav spacing for content */
+  main {
+    padding-bottom: 80px !important;
+  }
+}
+
+/* Pull-to-refresh indicator styling */
+.pull-indicator {
+  @apply flex items-center justify-center h-12 text-slate-400 text-sm;
+  transform: translateY(-100%);
+  transition: transform var(--duration-normal) var(--ease-out-soft);
+}
+
+.pull-indicator.visible {
+  transform: translateY(0);
+}
+
+/* Mobile navigation transitions */
+.slide-up {
+  animation: slideUp var(--duration-slow) var(--ease-out-smooth);
+}
+
+.slide-down {
+  animation: slideDown var(--duration-slow) var(--ease-out-smooth);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Floating action button for mobile */
+.fab {
+  @apply fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-40;
+  @apply flex items-center justify-center;
+  @apply bg-accent text-white;
+  padding-bottom: calc(env(safe-area-inset-bottom) / 2);
+  transition:
+    transform var(--duration-instant) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
+}
+
+.fab:hover {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+/* Mobile overlay */
+.mobile-overlay {
+  @apply fixed inset-0 bg-black/60 z-40;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duration-normal) var(--ease-out-soft),
+    visibility var(--duration-normal) var(--ease-out-soft);
+}
+
+.mobile-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Swipe gesture hints */
+.swipe-hint {
+  @apply text-xs text-slate-500 text-center py-2;
+}
+
+/* Responsive grid helpers */
+.mobile-grid-1 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+}
+
+.mobile-grid-2 {
+  @apply grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3;
+}
+
+/* =====================================================
+   UTILITY ANIMATION CLASSES
+   ===================================================== */
+
+/* Fade in */
+.animate-fade-in {
+  animation: fadeIn var(--duration-page) var(--ease-out-smooth);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Smooth transition helper */
+.transition-smooth {
+  transition: all var(--duration-fast) var(--ease-out-soft);
+}
+
+/* GPU-accelerated transform transitions */
+.transition-transform-gpu {
+  transition: transform var(--duration-fast) var(--ease-out-soft);
+  will-change: transform;
+}
+
+/* =====================================================
+   ENHANCED MICRO-INTERACTIONS (PHASE 10)
+   ===================================================== */
+
+/* Ripple effect on buttons */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.3s ease,
+    height 0.3s ease,
+    opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.btn-ripple:active::after {
+  width: 200%;
+  height: 200%;
+  opacity: 0;
+}
+
+/* Pulse animation for live indicators */
+.pulse-live {
+  animation: pulseLive 2s ease-in-out infinite;
+}
+
+@keyframes pulseLive {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Smooth reveal for data loading */
+.reveal-up {
+  animation: revealUp 0.3s var(--ease-out-smooth) forwards;
+}
+
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bounce on success */
+.bounce-success {
+  animation: bounceSuccess 0.5s var(--ease-spring);
+}
+
+@keyframes bounceSuccess {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Error shake animation */
+.shake-error {
+  animation: shakeError 0.4s ease-in-out;
+}
+
+@keyframes shakeError {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+/* Smooth number transition */
+.number-transition {
+  transition: all 0.3s var(--ease-out-smooth);
+}
+
+/* =====================================================
+   ENHANCED LOADING STATES (PHASE 9)
+   ===================================================== */
+
+/* Better error state */
+.error-state {
+  @apply glass-card p-8 text-center border border-red-500/30;
+  animation: fadeIn 0.3s var(--ease-out-smooth);
+}
+
+.error-state .retry-btn {
+  @apply mt-4 px-6 py-2.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all inline-flex items-center gap-2;
+}
+
+/* Empty state */
+.empty-state {
+  @apply glass-card p-12 text-center;
+  animation: fadeIn 0.3s var(--ease-out-smooth);
+}
+
+.empty-state .icon {
+  @apply text-6xl mb-4;
+}
+
+.empty-state .title {
+  @apply text-xl font-bold mb-2;
+}
+
+.empty-state .description {
+  @apply text-slate-400;
+}
+
+/* Progressive reveal for content sections */
+.progressive-reveal > * {
+  opacity: 0;
+  transform: translateY(15px);
+  animation: progressiveReveal 0.4s var(--ease-out-smooth) forwards;
+}
+
+.progressive-reveal > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.progressive-reveal > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.progressive-reveal > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.progressive-reveal > *:nth-child(4) {
+  animation-delay: 150ms;
+}
+.progressive-reveal > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+.progressive-reveal > *:nth-child(n + 6) {
+  animation-delay: 250ms;
+}
+
+@keyframes progressiveReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeleton pulse (enhanced) */
+.skeleton-pulse {
+  @apply bg-white/5 rounded;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Loading overlay */
+.loading-overlay {
+  @apply absolute inset-0 bg-surface/80 backdrop-blur-sm flex items-center justify-center z-50;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Success checkmark animation */
+.success-check {
+  animation: successCheck 0.4s var(--ease-spring);
+}
+
+@keyframes successCheck {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition:
+    transform 0.2s var(--ease-out-soft),
+    box-shadow 0.2s var(--ease-out-soft);
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+}
+
+/* Active press effect */
+.active-press:active {
+  transform: scale(0.98);
+  transition: transform 50ms ease;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Tabular numbers for scores and stats */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

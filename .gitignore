@@ -1,0 +1,38 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+
+# Exclude large ML artifacts except for essential trained models
+*.joblib
+*.pt
+*.pth
+
+# But include the essential pkl files in trained_models (except meta_model
+# which must be retrained after any ensemble structure change)
+!ml_engine/trained_models/*.pkl
+ml_engine/trained_models/meta_model.pkl
+
+# Exclude feedback logs (can get large)
+ml_engine/trained_models/feedback/
+
+# Large training data files (models are pre-trained)
+data/historical/all_leagues_combined.json
+data/historical/league_*_all.json
+.env
+logs/
+
+# Runtime log files
+*.log
+backtest_run_*.log
+
+# Test output artifacts
+test_og_image.png
+
+# Nuclei scan output
+nuclei.txt
+
+# Local split-export scaffolding
+_repo_split/

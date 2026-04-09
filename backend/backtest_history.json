@@ -1,0 +1,92 @@
+{
+  "history": [
+    {
+      "date": "2025-11-25",
+      "summary": {
+        "total": 142,
+        "correct": 68,
+        "accuracy": 47.9,
+        "evaluated": 142
+      }
+    },
+    {
+      "date": "2025-12-02",
+      "summary": {
+        "total": 142,
+        "correct": 75,
+        "accuracy": 52.8,
+        "evaluated": 142
+      }
+    },
+    {
+      "date": "2025-12-09",
+      "summary": {
+        "total": 143,
+        "correct": 85,
+        "accuracy": 59.4,
+        "evaluated": 143
+      }
+    },
+    {
+      "date": "2025-12-16",
+      "summary": {
+        "total": 143,
+        "correct": 85,
+        "accuracy": 59.4,
+        "evaluated": 143
+      }
+    },
+    {
+      "date": "2025-12-23",
+      "summary": {
+        "total": 148,
+        "correct": 90,
+        "accuracy": 60.8,
+        "evaluated": 148
+      }
+    },
+    {
+      "date": "2025-12-30",
+      "summary": {
+        "total": 140,
+        "correct": 85,
+        "accuracy": 60.7,
+        "evaluated": 140
+      }
+    },
+    {
+      "date": "2026-01-02",
+      "summary": {
+        "total": 33,
+        "correct": 17,
+        "accuracy": 51.515151515151516,
+        "evaluated": 33
+      }
+    },
+    {
+      "date": "2026-01-02",
+      "summary": {
+        "total": 33,
+        "correct": 17,
+        "accuracy": 51.515151515151516,
+        "evaluated": 33
+      }
+    },
+    {
+      "date": "2026-01-03",
+      "summary": {
+        "total": 37,
+        "correct": 19,
+        "accuracy": 51.35135135135135,
+        "evaluated": 37
+      }
+    }
+  ],
+  "summary": {
+    "total_weeks": 9,
+    "avg_accuracy": 55.0,
+    "total_predictions": 961,
+    "correct_predictions": 541,
+    "last_updated": "2026-01-03T16:37:47.511034"
+  }
+}

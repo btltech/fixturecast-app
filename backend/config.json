@@ -1,0 +1,639 @@
+{
+  "allowed_competitions": [
+    8, 9,
+    1, 15, 16, 17, 22, 29, 30, 31, 32, 34, 6,
+    2, 3, 848,
+    5, 11, 12, 13,
+    39, 140, 135, 78, 61, 88, 94, 218, 207, 119, 113, 103,
+    41, 42, 43, 46,
+    66, 73, 81, 130, 137, 143, 181,
+    307, 71, 203, 253, 179, 144,
+    128, 262, 98, 239, 265, 292, 323, 435,
+    233, 289, 200, 213, 198, 332, 338,
+    197, 106, 271, 283, 345,
+    116, 183, 244, 164, 169,
+    188, 210, 235, 255, 278, 286, 296, 333, 340,
+    40, 141, 136, 79, 62,
+    45, 48
+  ],
+  "api_key": "",
+  "api_base_url": "https://v3.football.api-sports.io",
+  "competition_metadata": {
+    "2": {
+      "name": "Champions League",
+      "type": "european_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.5
+    },
+    "3": {
+      "name": "Europa League",
+      "type": "european_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.3
+    },
+    "848": {
+      "name": "Conference League",
+      "type": "european_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.1
+    },
+    "39": {
+      "name": "Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.0
+    },
+    "140": {
+      "name": "La Liga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.0
+    },
+    "135": {
+      "name": "Serie A",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.0
+    },
+    "78": {
+      "name": "Bundesliga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.0
+    },
+    "61": {
+      "name": "Ligue 1",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.0
+    },
+    "88": {
+      "name": "Eredivisie",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.9
+    },
+    "94": {
+      "name": "Primeira Liga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.9
+    },
+    "218": {
+      "name": "Austrian Bundesliga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "207": {
+      "name": "Swiss Super League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "119": {
+      "name": "Danish Superliga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "113": {
+      "name": "Allsvenskan",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "103": {
+      "name": "Eliteserien",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "40": {
+      "name": "Championship",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "141": {
+      "name": "Segunda División",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "136": {
+      "name": "Serie B",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "79": {
+      "name": "2. Bundesliga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "62": {
+      "name": "Ligue 2",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "45": {
+      "name": "FA Cup",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.9
+    },
+    "48": {
+      "name": "League Cup",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.7
+    },
+    "307": {
+      "name": "Saudi Pro League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.85
+    },
+    "253": {
+      "name": "MLS",
+      "type": "domestic_league",
+      "format": "league_playoff",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.75
+    },
+    "203": {
+      "name": "Süper Lig",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.85
+    },
+    "71": {
+      "name": "Brasileirão",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.9
+    },
+    "179": {
+      "name": "Scottish Premiership",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "144": {
+      "name": "Belgian Pro League",
+      "type": "domestic_league",
+      "format": "league_playoff",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "128": {
+      "name": "Argentine Primera División",
+      "type": "domestic_league",
+      "format": "apertura_clausura",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.9
+    },
+    "262": {
+      "name": "Liga MX",
+      "type": "domestic_league",
+      "format": "apertura_clausura",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.85
+    },
+    "98": {
+      "name": "J1 League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "239": {
+      "name": "Colombian Primera A",
+      "type": "domestic_league",
+      "format": "apertura_clausura",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "265": {
+      "name": "Chilean Primera",
+      "type": "domestic_league",
+      "format": "apertura_clausura",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "292": {
+      "name": "K League 1",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "323": {
+      "name": "Indian Super League",
+      "type": "domestic_league",
+      "format": "league_playoff",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.65
+    },
+    "435": {
+      "name": "UAE Pro League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "233": {
+      "name": "Egyptian Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "289": {
+      "name": "South African PSL",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.65
+    },
+    "200": {
+      "name": "Moroccan Botola Pro",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.65
+    },
+    "213": {
+      "name": "Tunisian Ligue 1",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.6
+    },
+    "198": {
+      "name": "Algerian Ligue Pro 1",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.6
+    },
+    "332": {
+      "name": "Nigerian Pro League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.6
+    },
+    "338": {
+      "name": "Ghanaian Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.6
+    },
+    "197": {
+      "name": "Greek Super League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "106": {
+      "name": "Polish Ekstraklasa",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "271": {
+      "name": "Israeli Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "283": {
+      "name": "Romanian Liga 1",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "345": {
+      "name": "Czech First League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "116": {
+      "name": "Faroese Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.5
+    },
+    "183": {
+      "name": "Maltese Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.5
+    },
+    "244": {
+      "name": "Finnish Veikkausliiga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.6
+    },
+    "164": {
+      "name": "Icelandic Úrvalsdeild",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.55
+    },
+    "169": {
+      "name": "Chinese Super League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "5": {
+      "name": "UEFA Nations League",
+      "type": "international",
+      "format": "group_knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 1.1
+    },
+    "11": {
+      "name": "Copa Sudamericana",
+      "type": "continental_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.1
+    },
+    "12": {
+      "name": "CAF Champions League",
+      "type": "continental_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.0
+    },
+    "13": {
+      "name": "Copa Libertadores",
+      "type": "continental_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.3
+    },
+    "41": {
+      "name": "League One",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "42": {
+      "name": "League Two",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.65
+    },
+    "43": {
+      "name": "National League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.55
+    },
+    "46": {
+      "name": "EFL Trophy",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.5
+    },
+    "66": {
+      "name": "Coupe de France",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.8
+    },
+    "73": {
+      "name": "Copa do Brasil",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": true,
+      "neutral_final": false,
+      "prestige_factor": 0.85
+    },
+    "81": {
+      "name": "DFB-Pokal",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.85
+    },
+    "130": {
+      "name": "Copa Argentina",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.75
+    },
+    "137": {
+      "name": "Coppa Italia",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 0.85
+    },
+    "143": {
+      "name": "Copa del Rey",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.85
+    },
+    "181": {
+      "name": "Scottish FA Cup",
+      "type": "domestic_cup",
+      "format": "knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.6
+    },
+    "188": {
+      "name": "A-League",
+      "type": "domestic_league",
+      "format": "league_playoff",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.65
+    },
+    "210": {
+      "name": "Croatian HNL",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "235": {
+      "name": "Russian Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.8
+    },
+    "255": {
+      "name": "USL Championship",
+      "type": "domestic_league",
+      "format": "league_playoff",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 0.6
+    },
+    "278": {
+      "name": "Malaysian Super League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.6
+    },
+    "286": {
+      "name": "Serbian SuperLiga",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.7
+    },
+    "296": {
+      "name": "Thai League 1",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.65
+    },
+    "333": {
+      "name": "Ukrainian Premier League",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.75
+    },
+    "340": {
+      "name": "Vietnam V.League 1",
+      "type": "domestic_league",
+      "format": "league",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.55
+    }
+  }
+}

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://fixturecast.com/sitemap.xml
+
+# Crawl-delay (be nice to our API)
+Crawl-delay: 2
+
+# Block admin/internal pages
+Disallow: /admin/
