@@ -1,0 +1,191 @@
+# GitHub Actions Workflow for Daily Predictions
+# Generates and caches predictions for today's matches every morning
+
+name: Daily Predictions
+
+on:
+  schedule:
+    # Run at 7:00 AM UTC daily (ensures API data is fully refreshed)
+    - cron: '0 7 * * *'
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  ML_API_URL: https://ml-api-production-6cfc.up.railway.app
+  BACKEND_API_URL: https://backend-api-production-7b7d.up.railway.app
+  CURL_OPTS: "--retry 3 --retry-delay 5 --retry-connrefused --connect-timeout 10 --max-time 120"
+
+jobs:
+  generate-predictions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Data Freshness
+        id: validation
+        run: |
+          echo "🔍 Validating fixture data freshness..."
+
+          # Fetch today's fixtures
+          FIXTURES=$(curl -fsS $CURL_OPTS "$BACKEND_API_URL/api/fixtures/today" || echo '{"response":[]}')
+          FIXTURE_COUNT=$(printf '%s' "$FIXTURES" | jq '.response | length')
+
+          echo "📊 Found $FIXTURE_COUNT fixtures"
+
+          # If we have fixtures, check if data looks fresh
+          if [ "$FIXTURE_COUNT" -gt "0" ]; then
+            # Check if any fixture has odds data (indicator of fresh data)
+            HAS_ODDS=$(printf '%s' "$FIXTURES" | jq '[.response[] | select(.odds != null)] | length')
+
+            if [ "$HAS_ODDS" -gt "0" ]; then
+              echo "✅ Data appears fresh (odds available)"
+              echo "data_fresh=true" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Warning: No odds data found, but proceeding..."
+              echo "data_fresh=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "📭 No fixtures today"
+            echo "data_fresh=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate Today's Predictions
+        run: |
+          echo "📅 Generating predictions for $(date -u +%Y-%m-%d)..."
+
+          # Fetch today's fixtures
+          echo "🔍 Fetching today's fixtures..."
+          FIXTURES=$(curl -fsS $CURL_OPTS "$BACKEND_API_URL/api/fixtures/today" || echo '{"response":[]}')
+
+          FIXTURE_COUNT=$(printf '%s' "$FIXTURES" | jq '.response | length')
+          echo "📊 Found $FIXTURE_COUNT fixtures for today"
+
+          if [ "$FIXTURE_COUNT" = "0" ]; then
+            echo "📭 No fixtures today, exiting"
+            echo "## 📅 Daily Predictions" >> $GITHUB_STEP_SUMMARY
+            echo "No fixtures scheduled for $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          # Generate predictions for ALL fixtures (no limit)
+          SUCCESSFUL=0
+          FAILED=0
+
+          while IFS= read -r fixture; do
+            FIXTURE_ID=$(echo $fixture | jq -r '.fixture.id')
+            LEAGUE_ID=$(echo $fixture | jq -r '.league.id')
+            HOME=$(echo $fixture | jq -r '.teams.home.name')
+            AWAY=$(echo $fixture | jq -r '.teams.away.name')
+
+            echo "  Generating prediction for $HOME vs $AWAY..."
+
+            if curl -fsS $CURL_OPTS "$ML_API_URL/api/prediction/$FIXTURE_ID?league=$LEAGUE_ID" -o /dev/null 2>/dev/null; then
+              echo "    ✅ Success"
+              SUCCESSFUL=$((SUCCESSFUL + 1))
+            else
+              echo "    ❌ Failed (retrying once...)"
+              sleep 2
+              if curl -fsS $CURL_OPTS "$ML_API_URL/api/prediction/$FIXTURE_ID?league=$LEAGUE_ID" -o /dev/null 2>/dev/null; then
+                echo "    ✅ Success on retry"
+                SUCCESSFUL=$((SUCCESSFUL + 1))
+              else
+                echo "    ❌ Failed after retry, continuing..."
+                FAILED=$((FAILED + 1))
+              fi
+            fi
+          done < <(printf '%s' "$FIXTURES" | jq -c '.response[]')
+
+          echo ""
+          echo "✅ Predictions generated: $SUCCESSFUL successful, $FAILED failed"
+
+      - name: Generate Daily Accumulators
+        run: |
+          echo "🎲 Generating daily accumulators..."
+
+          # Call the accumulator generation endpoint
+          ACCA_RESPONSE=$(curl -fsS $CURL_OPTS -X POST "$BACKEND_API_URL/api/accumulators/generate" -H "Content-Type: application/json" || echo '{"success":false}')
+
+          SUCCESS=$(echo $ACCA_RESPONSE | jq -r '.success')
+
+          if [ "$SUCCESS" = "true" ]; then
+            ACCA_COUNT=$(echo $ACCA_RESPONSE | jq '.accumulators | length')
+            echo "✅ Generated $ACCA_COUNT accumulators:"
+
+            # Display accumulator types
+            echo $ACCA_RESPONSE | jq -r '.accumulators | to_entries[] | "  - " + .key + ": " + (.value.selections | length | tostring) + " selections @ " + (.value.total_odds | tostring) + " odds"'
+          else
+            MESSAGE=$(echo $ACCA_RESPONSE | jq -r '.message // "Unknown error"')
+            echo "⚠️ Accumulator generation failed: $MESSAGE"
+          fi
+
+      - name: Check Match of the Day
+        run: |
+          echo "⭐ Checking Match of the Day..."
+
+          MOTD_RESPONSE=$(curl -fsS $CURL_OPTS "$BACKEND_API_URL/api/fixtures/today" || echo '{"match_of_the_day": null}')
+          MOTD=$(printf '%s' "$MOTD_RESPONSE" | jq '.match_of_the_day')
+
+          if [ "$MOTD" != "null" ]; then
+            HOME=$(echo $MOTD | jq -r '.teams.home.name')
+            AWAY=$(echo $MOTD | jq -r '.teams.away.name')
+            LEAGUE=$(echo $MOTD | jq -r '.league.name')
+            echo "⭐ Match of the Day: $HOME vs $AWAY ($LEAGUE)"
+
+            # Pre-generate MOTD prediction
+            FIXTURE_ID=$(echo $MOTD | jq -r '.fixture.id')
+            LEAGUE_ID=$(echo $MOTD | jq -r '.league.id')
+            curl -fsS $CURL_OPTS "$ML_API_URL/api/prediction/$FIXTURE_ID?league=$LEAGUE_ID" > /dev/null || true
+            echo "✅ MOTD prediction cached"
+          else
+            echo "📭 No Match of the Day today"
+          fi
+
+      - name: Generate Summary
+        run: |
+          echo "## 📅 Daily Predictions Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get fixture count
+          FIXTURES=$(curl -fsS $CURL_OPTS "$BACKEND_API_URL/api/fixtures/today" || echo '{"response":[]}')
+          FIXTURE_COUNT=$(printf '%s' "$FIXTURES" | jq '.response | length')
+          MOTD=$(printf '%s' "$FIXTURES" | jq '.match_of_the_day')
+
+          echo "### 📊 Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "- Total fixtures: **$FIXTURE_COUNT**" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$MOTD" != "null" ]; then
+            HOME=$(echo $MOTD | jq -r '.teams.home.name')
+            AWAY=$(echo $MOTD | jq -r '.teams.away.name')
+            echo "- Match of the Day: **$HOME vs $AWAY**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Match of the Day: _None selected_" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Add accumulator info
+          ACCAS=$(curl -fsS $CURL_OPTS "$BACKEND_API_URL/api/accumulators/today" || echo '{"success":false}')
+          ACCA_SUCCESS=$(echo $ACCAS | jq -r '.success')
+
+          if [ "$ACCA_SUCCESS" = "true" ]; then
+            ACCA_COUNT=$(echo $ACCAS | jq '.accumulators | length')
+            echo "- Daily Accumulators: **$ACCA_COUNT** generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🤖 Bot Posts Scheduled" >> $GITHUB_STEP_SUMMARY
+          echo "- Morning MOTD: 8:00 AM UTC" >> $GITHUB_STEP_SUMMARY
+          echo "- Afternoon MOTD: 2:00 PM UTC" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_Predictions generated at $(date -u)_" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Daily predictions workflow failed!"
+          echo "## ⚠️ Workflow Failure Alert" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The daily predictions workflow encountered an error." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** Daily Predictions" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the workflow logs for details." >> $GITHUB_STEP_SUMMARY

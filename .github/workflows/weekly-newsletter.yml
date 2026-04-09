@@ -1,0 +1,107 @@
+name: Weekly Newsletter
+
+on:
+  schedule:
+    # Friday at 5 PM UTC — weekend preview before Saturday matches
+    - cron: '0 17 * * 5'
+  workflow_dispatch:
+    inputs:
+      send:
+        description: 'Actually send the newsletter (false = preview only)'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  BACKEND_API_URL: https://backend-api-production-7b7d.up.railway.app
+  CURL_OPTS: "--retry 3 --retry-delay 5 --retry-connrefused --connect-timeout 10 --max-time 120"
+
+jobs:
+  send-newsletter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if newsletter should send
+        id: check
+        run: |
+          SHOULD_SEND="${{ github.event.inputs.send || 'true' }}"
+          echo "send=$SHOULD_SEND" >> $GITHUB_OUTPUT
+          echo "📧 Newsletter send mode: $SHOULD_SEND"
+
+      - name: Preview Newsletter
+        id: preview
+        run: |
+          echo "📋 Fetching newsletter preview..."
+          PREVIEW=$(curl -fsS $CURL_OPTS "$BACKEND_API_URL/api/newsletter/preview" || echo '{"success":false}')
+
+          SUCCESS=$(echo "$PREVIEW" | jq -r '.success')
+          PICKS=$(echo "$PREVIEW" | jq '.picks | length')
+
+          echo "preview_success=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "picks_count=$PICKS" >> $GITHUB_OUTPUT
+
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✅ Preview ready: $PICKS picks available"
+          else
+            ERROR=$(echo "$PREVIEW" | jq -r '.error // "Unknown error"')
+            echo "⚠️ Preview failed: $ERROR"
+          fi
+
+      - name: Send Newsletter
+        if: steps.check.outputs.send == 'true' && steps.preview.outputs.preview_success == 'true' && steps.preview.outputs.picks_count != '0'
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          echo "📨 Sending newsletter..."
+
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "❌ ADMIN_SECRET not set — cannot send"
+            exit 1
+          fi
+
+          RESULT=$(curl -fsS $CURL_OPTS \
+            -X GET "$BACKEND_API_URL/api/newsletter/send?secret=$ADMIN_SECRET" \
+            || echo '{"success":false}')
+
+          SUCCESS=$(echo "$RESULT" | jq -r '.success')
+          if [ "$SUCCESS" = "true" ]; then
+            PICKS=$(echo "$RESULT" | jq -r '.picks_count')
+            echo "✅ Newsletter sent! $PICKS picks included"
+          else
+            echo "❌ Send failed"
+            echo "$RESULT" | jq .
+            exit 1
+          fi
+
+      - name: Skip (no picks)
+        if: steps.preview.outputs.picks_count == '0' || steps.preview.outputs.preview_success != 'true'
+        run: echo "📭 No picks available — newsletter skipped"
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 📧 Weekly Newsletter" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "**Picks available:** ${{ steps.preview.outputs.picks_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Send mode:** ${{ steps.check.outputs.send }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check.outputs.send }}" = "true" ] && [ "${{ steps.preview.outputs.picks_count }}" != "0" ]; then
+            echo "✅ Newsletter sent successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "📭 Newsletter not sent this week" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -s -X POST "$DISCORD_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "{\"content\": \"⚠️ Weekly newsletter workflow failed! Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          fi

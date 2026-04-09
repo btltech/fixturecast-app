@@ -1,16 +1,12 @@
-name: Deploy Public Services
+name: Deploy App Services
 
 on:
   workflow_dispatch:
     inputs:
       service:
-        description: 'Service to deploy'
+        description: 'Exact Railway service name to deploy (for example: backend-api, telegram-bot, discord-bot, scheduler)'
         required: true
         default: 'backend-api'
-        type: choice
-        options:
-          - backend-api
-          - bots
 
 jobs:
   validate:
@@ -26,7 +22,7 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: pip install -r requirements-backend.txt --quiet
+        run: pip install -r requirements.txt --quiet
 
       - name: Backend import smoke test
         working-directory: backend
@@ -34,6 +30,12 @@ jobs:
           python -c "import main; print('main imports OK')"
           python -c "import database; print('database imports OK')"
           python -c "import api_client; print('api_client imports OK')"
+
+      - name: Bot and scheduler syntax check
+        run: |
+          python -m py_compile scripts/telegram_bot.py
+          python -m py_compile scripts/discord_bot.py
+          python -m py_compile scripts/scheduled_tasks.py
 
   deploy:
     runs-on: ubuntu-latest
@@ -56,8 +58,5 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           SERVICE="${{ github.event.inputs.service }}"
-          if [ "$SERVICE" = "bots" ]; then
-            echo "Deploy bot services from Railway UI or separate workflow as needed"
-            exit 0
-          fi
-          railway up --service backend-api -d
+          echo "🚀 Deploying $SERVICE..."
+          railway up --service "$SERVICE" -d
