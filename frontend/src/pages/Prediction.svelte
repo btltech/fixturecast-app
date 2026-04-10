@@ -18,7 +18,7 @@
   } from "../services/exportService.js";
   import { compareStore } from "../services/compareStore.js";
   import { ML_API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { getLeague } from "../services/leagues.js";
   import SEOHead from "../components/SEOHead.svelte";
   import { generatePredictionSEO } from "../services/seoService.js";
@@ -30,7 +30,7 @@
   let loading = true;
   let error = null;
   let league = 39;
-  let season = getCurrentSeason();
+  let season = getLeagueSeason(39);
   let predictionRequestToken = 0;
   let showDetails = true;
   let isMobile = false;
@@ -77,7 +77,9 @@
       const leagueParam = parseInt(params.get("league") || "", 10);
       const seasonParam = parseInt(params.get("season") || "", 10);
       if (!Number.isNaN(leagueParam)) league = leagueParam;
-      if (!Number.isNaN(seasonParam)) season = seasonParam;
+      season = !Number.isNaN(seasonParam)
+        ? seasonParam
+        : getLeagueSeason(league);
     }
     await loadPrediction();
   });

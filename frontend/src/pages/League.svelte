@@ -5,7 +5,7 @@
   import { _, locale } from "svelte-i18n";
   import { Link } from "svelte-routing";
   import { API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { getLeague } from "../services/leagues.js";
   import { formatDate } from "../lib/i18n/format.js";
 
@@ -13,7 +13,7 @@
 
   const leagueId = parseInt(id, 10);
   const league   = getLeague(leagueId);
-  const season   = getCurrentSeason();
+  const season   = getLeagueSeason(leagueId);
 
   $: seoData = league ? generateLeagueSEO(league) : null;
 
@@ -138,7 +138,7 @@
           {@const home      = f.teams?.home}
           {@const away      = f.teams?.away}
           <Link
-            to="/prediction/{fixtureId}?league={leagueId}"
+            to="/prediction/{fixtureId}?league={leagueId}&season={getLeagueSeason(leagueId, date)}"
             class="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-accent/40 transition-all"
           >
             <!-- Teams -->

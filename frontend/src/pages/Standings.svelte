@@ -11,6 +11,7 @@
     saveLeague,
   } from "../services/preferences.js";
   import { LEAGUES } from "../services/leagues.js";
+  import { isCalendarYearLeague } from "../services/season.js";
 
   let selectedLeague = getSavedLeague(39); // Premier League default (persisted)
   let standings = [];
@@ -19,18 +20,8 @@
   let error = null;
   const leagues = LEAGUES.map((l) => ({ ...l, flag: l.emoji }));
 
-  // Leagues that display as a single calendar year (not "2025/26" cross-year format)
-  const SINGLE_YEAR_LEAGUE_IDS = new Set([
-    71, 116, 183, 244, 164,         // calendar-year / summer leagues
-    13, 11, 73, 130,                // South American cups
-    98, 292, 253, 262,              // J1, K League, MLS, Liga MX
-    128, 239, 265,                  // South American leagues
-    296, 278, 340, 169, 255,        // Asian / USL
-  ]);
-
   function formatSeason(leagueId, seasonYear) {
-    const currentYear = new Date().getFullYear();
-    if (!SINGLE_YEAR_LEAGUE_IDS.has(leagueId) && seasonYear < currentYear) {
+    if (!isCalendarYearLeague(leagueId)) {
       return `${seasonYear}/${String(seasonYear + 1).slice(2)}`;
     }
     return String(seasonYear);

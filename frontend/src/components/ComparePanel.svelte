@@ -6,7 +6,7 @@
   import ConfidenceBadge from "./ConfidenceBadge.svelte";
   import SkeletonLoader from "./SkeletonLoader.svelte";
   import { ML_API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { _ } from "svelte-i18n";
 
   let predictions = [null, null];
@@ -19,7 +19,12 @@
   $: compareFixtures = $compareStore?.fixtures || [];
   $: compareLeagues = $compareStore?.fixtureLeagues || {};
 
-  const season = getCurrentSeason();
+  function getComparisonSeason(
+    fixtureId,
+    leagueId = compareLeagues[fixtureId] || 39,
+  ) {
+    return getLeagueSeason(leagueId);
+  }
 
   // React to fixture changes to load predictions
   $: if (compareFixtures[0] && !predictions[0]) {
@@ -44,6 +49,7 @@
 
     try {
       const leagueParam = leagueId || compareLeagues[fixtureId] || 39;
+      const season = getComparisonSeason(fixtureId, leagueParam);
       const res = await fetch(
         `${ML_API_URL}/api/prediction/${fixtureId}?league=${leagueParam}&season=${season}`
       );
@@ -264,7 +270,7 @@
                       </div>
 
                       <Link
-                        to={`/prediction/${compareFixtures[0]}?league=${compareLeagues[compareFixtures[0]] || 39}&season=${season}`}
+                        to={`/prediction/${compareFixtures[0]}?league=${compareLeagues[compareFixtures[0]] || 39}&season=${getComparisonSeason(compareFixtures[0])}`}
                         class="view-analysis-btn-sm"
                         on:click={closePanel}
                       >
@@ -380,7 +386,7 @@
                       </div>
 
                       <Link
-                        to={`/prediction/${compareFixtures[1]}?league=${compareLeagues[compareFixtures[1]] || 39}&season=${season}`}
+                        to={`/prediction/${compareFixtures[1]}?league=${compareLeagues[compareFixtures[1]] || 39}&season=${getComparisonSeason(compareFixtures[1])}`}
                         class="view-analysis-btn-sm"
                         on:click={closePanel}
                       >
@@ -566,7 +572,7 @@
 
                     <!-- View Full -->
                     <Link
-                      to={`/prediction/${compareFixtures[index]}?league=${compareLeagues[compareFixtures[index]] || 39}&season=${season}`}
+                      to={`/prediction/${compareFixtures[index]}?league=${compareLeagues[compareFixtures[index]] || 39}&season=${getComparisonSeason(compareFixtures[index])}`}
                       class="view-analysis-btn-sm"
                       on:click={closePanel}
                     >

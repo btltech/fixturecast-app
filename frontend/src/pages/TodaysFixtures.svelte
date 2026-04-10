@@ -12,7 +12,7 @@
   import SkeletonLoader from "../components/SkeletonLoader.svelte";
   import SearchBar from "../components/SearchBar.svelte";
   import ConfidenceBadge from "../components/ConfidenceBadge.svelte";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { getLeagueDisplay as leagueDisplay } from "../services/leagues.js";
 
   function getLeagueDisplay(leagueId) {
@@ -26,7 +26,6 @@
   let loading = true;
   let error = null;
   let searchQuery = "";
-  const season = getCurrentSeason();
   let userTimezone = "UTC"; // populated on mount (avoids SSR value from Cloudflare worker)
   let timezoneMode = "auto";
   let manualTimezone = "UTC";
@@ -94,6 +93,13 @@
     return timezoneMode === "auto" ? `${userTimezone} (${$_("todaysFixtures.autoTimezone")})` : manualTimezone;
   }
 
+  function getFixtureSeason(fixture, fallbackLeagueId = 39) {
+    return getLeagueSeason(
+      fixture?.league?.id || fallbackLeagueId,
+      fixture?.fixture?.date,
+    );
+  }
+
   async function loadTodaysFixtures(retries = 2) {
     loading = true;
     error = null;
@@ -139,12 +145,14 @@
     for (let i = 0; i < matches.length; i += batchSize) {
       const batch = matches.slice(i, i + batchSize);
       await Promise.allSettled(
-        batch.map((m) => loadPrediction(m.fixture.id, m.league?.id || 39)),
+        batch.map((m) =>
+          loadPrediction(m.fixture.id, m.league?.id || 39, m.fixture?.date),
+        ),
       );
     }
   }
 
-  async function loadPrediction(fixtureId, leagueId) {
+  async function loadPrediction(fixtureId, leagueId, fixtureDate = new Date()) {
     if (predictions[fixtureId] || loadingPredictions[fixtureId]) {
       return;
     }
@@ -153,6 +161,7 @@
     loadingPredictions = { ...loadingPredictions };
 
     try {
+      const season = getLeagueSeason(leagueId, fixtureDate);
       const res = await fetch(
         `${ML_API_URL}/api/prediction/${fixtureId}?league=${leagueId}&season=${season}`,
       );
@@ -327,7 +336,7 @@
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {#each upcomingMatches.slice(0, 9) as fixture}
             <Link
-              to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || 39}&season=${season}`}
+              to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || 39}&season=${getFixtureSeason(fixture)}`}
               class="group glass-card p-4 hover:border-primary/30 transition-all hover:-translate-y-1"
             >
               <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
@@ -392,7 +401,7 @@
         </div>
 
         <Link
-          to={`/prediction/${matchOfTheDay.fixture.id}?league=${matchOfTheDay.league?.id || 39}&season=${season}`}
+          to={`/prediction/${matchOfTheDay.fixture.id}?league=${matchOfTheDay.league?.id || 39}&season=${getFixtureSeason(matchOfTheDay)}`}
           class="block group"
         >
           <div class="flex items-center justify-between">
@@ -580,7 +589,7 @@
                     ></div>
                   </div>
                   <Link
-                    to={`/prediction/${fixtureId}?league=${leagueIdNum}&season=${season}`}
+                    to={`/prediction/${fixtureId}?league=${leagueIdNum}&season=${getFixtureSeason(fixture, leagueIdNum)}`}
                     class="block mt-3 text-center py-2.5 bg-accent/20 hover:bg-accent/30 text-accent rounded-lg text-sm font-medium touch-target"
                   >
                     🔮 {$_("prediction.viewFullAnalysis")}
@@ -588,7 +597,8 @@
                 </div>
               {:else}
                 <button
-                  on:click={() => loadPrediction(fixtureId, leagueIdNum)}
+                  on:click={() =>
+                    loadPrediction(fixtureId, leagueIdNum, fixture.fixture.date)}
                   disabled={loadingPredictions[fixtureId]}
                   class="w-full py-3 bg-accent/20 hover:bg-accent/30 text-accent rounded-lg font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 touch-target"
                 >

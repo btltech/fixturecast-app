@@ -4,7 +4,7 @@
     const seoData = generateSmartMarketsSEO();
     import { onMount } from "svelte";
     import { ML_API_URL, BACKEND_API_URL } from "../services/apiConfig.js";
-    import { getCurrentSeason } from "../services/season.js";
+    import { getLeagueSeason } from "../services/season.js";
     import { LEAGUES } from "../services/leagues.js";
     import { _ } from "svelte-i18n";
 
@@ -37,7 +37,10 @@
     let error = null;
     let selectedFilter = "all"; // all, high-confidence, ou-only, btts-only
     let accuracy = null;
-    let season = getCurrentSeason();
+
+    function getFixtureSeason(leagueId, fixtureDate = new Date()) {
+        return getLeagueSeason(leagueId, fixtureDate);
+    }
 
     onMount(async () => {
         // Load backend-derived accuracy first so UI never falls back to hardcoded numbers.
@@ -54,6 +57,7 @@
             // Fetch TODAY'S fixtures from backend API for ALL featured leagues IN PARALLEL
             const leaguePromises = leagues.map(async (league) => {
                 try {
+                    const season = getFixtureSeason(league.id);
                     const response = await fetch(
                         `${BACKEND_API}/api/fixtures?league=${league.id}&season=${season}&today_only=true`,
                     );
@@ -87,7 +91,7 @@
                     if (!fixtureId) return null;
 
                     const predResponse = await fetch(
-                        `${ML_API}/api/prediction/${fixtureId}`,
+                        `${ML_API}/api/prediction/${fixtureId}?league=${match.league?.id}&season=${getFixtureSeason(match.league?.id, match.fixture?.date)}`,
                     );
 
                     if (predResponse.ok) {

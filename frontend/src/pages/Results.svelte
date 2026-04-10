@@ -5,7 +5,7 @@
   import { onMount } from "svelte";
   import { Link } from "svelte-routing";
   import { API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { getSavedLeague, saveLeague } from "../services/preferences.js";
   import { LEAGUES } from "../services/leagues.js";
   import { formatDate } from "../lib/i18n/format.js";
@@ -17,7 +17,9 @@
   let results = [];
   let loading = true;
   let error = null;
-  const season = getCurrentSeason();
+  let season;
+
+  $: season = getLeagueSeason(selectedLeague);
 
   const leagueOptions = LEAGUES.map((l) => ({ ...l, flag: l.emoji }));
 
@@ -192,7 +194,7 @@
             <div class="flex items-center gap-2">
               <Link
                 to="/prediction/{match.fixture.id}?league={match.league
-                  .id}&season={season}"
+                  .id}&season={getLeagueSeason(match.league.id, match.fixture.date)}"
                 class="text-xs px-2 py-1 rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
               >
                 🤖 {$_("prediction.aiPrediction")}

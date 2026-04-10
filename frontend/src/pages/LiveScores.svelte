@@ -6,7 +6,7 @@
   import { Link } from "svelte-routing";
   import { API_URL, ML_API_URL } from "../config.js";
   import SharePrediction from "../components/SharePrediction.svelte";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { FEATURED_LEAGUE_IDS } from "../services/leagues.js";
   import { _ } from "svelte-i18n";
 
@@ -19,8 +19,6 @@
   let expandedStats = {}; // fixtureId -> boolean
   let expandedEvents = {}; // fixtureId -> boolean
   let collapsedLeagues = {}; // leagueId -> boolean
-
-  const season = getCurrentSeason();
 
   // Auto-refresh countdown
   let countdown = 30;
@@ -53,6 +51,7 @@
       if (!predictions[fixtureId] && !loadingPrediction[fixtureId]) {
         loadingPrediction[fixtureId] = true;
         try {
+          const season = getLeagueSeason(match.league.id, match.fixture?.date);
           const res = await fetch(
             `${ML_API_URL}/api/prediction/${fixtureId}?league=${match.league.id}&season=${season}`,
           );

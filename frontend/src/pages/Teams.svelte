@@ -7,7 +7,7 @@
   import { _ } from "svelte-i18n";
   import { API_URL } from "../config.js";
   import SearchBar from "../components/SearchBar.svelte";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { LEAGUES } from "../services/leagues.js";
   import { getSavedLeague, saveLeague } from "../services/preferences.js";
 
@@ -17,14 +17,17 @@
   let loading = true;
   let selectedLeague = getSavedLeague(39);
   let searchQuery = "";
-  let season = getCurrentSeason();
+  let season;
   let showLeagueSelector = false;
+
+  $: season = getLeagueSeason(selectedLeague);
 
   async function loadTeams(leagueId) {
     loading = true;
     selectedLeague = leagueId;
     saveLeague(leagueId);
     try {
+      const season = getLeagueSeason(leagueId);
       const res = await fetch(
         `${API_URL}/api/teams?league=${leagueId}&season=${season}`,
       );

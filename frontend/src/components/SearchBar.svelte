@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { _, locale } from "svelte-i18n";
   import { API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { formatDate } from "../lib/i18n/format.js";
 
   export let searchQuery = "";
@@ -17,11 +17,15 @@
   let loading = false;
   let currentLeague = selectedLeague;
   let searchDebounce = null;
-  const season = getCurrentSeason();
+
+  function getFixtureSeason(fixture) {
+    return getLeagueSeason(fixture?.league?.id || selectedLeague, fixture?.fixture?.date);
+  }
 
   // Load league-scoped fixtures/teams (used when selectedLeague is set)
   async function loadData(leagueId) {
     try {
+      const season = getLeagueSeason(leagueId);
       const [teamsRes, fixturesRes] = await Promise.all([
         fetch(`${API_URL}/api/teams?league=${leagueId}&season=${season}`),
         fetch(`${API_URL}/api/fixtures?league=${leagueId}&next=50&season=${season}`),
@@ -171,7 +175,7 @@
             </div>
             {#each filteredFixtures as fixture}
               <Link
-              to="/prediction/{fixture.fixture.id}?league={fixture.league?.id || selectedLeague}&season={season}"
+              to="/prediction/{fixture.fixture.id}?league={fixture.league?.id || selectedLeague}&season={getFixtureSeason(fixture)}"
                 on:click={clearSearch}
                 class="block px-3 py-2 hover:bg-white/10 rounded-lg search-item"
               >

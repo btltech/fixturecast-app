@@ -9,7 +9,7 @@
     import { mlClient } from "../services/mlPredictionClient.js";
     import { ML_API_URL, BACKEND_API_URL } from "../services/apiConfig.js";
     import MLPrediction from "../components/MLPrediction.svelte";
-    import { getCurrentSeason } from "../services/season.js";
+    import { getLeagueSeason } from "../services/season.js";
     import { getSavedLeague, saveLeague, getSavedOddsFormat, saveOddsFormat } from "../services/preferences.js";
     import { LEAGUES } from "../services/leagues.js";
         import { formatDate } from "../lib/i18n/format.js";
@@ -29,7 +29,7 @@
     let error = null;
     let mlApiStatus = "checking";
     let league = getSavedLeague(39); // Default: Premier League (persisted)
-    let season = getCurrentSeason();
+    let season;
     let showLeagueDropdown = false;
     let showAnalysis = false; // For collapsible analysis section
     let fixturesRequestToken = 0;
@@ -47,6 +47,11 @@
 
     // Get current league info
     $: currentLeague = leagues.find(l => l.id === league) || leagues[0];
+    $: season = getLeagueSeason(league);
+
+    function getMatchSeason(match = null) {
+        return getLeagueSeason(league, match?.fixture?.date);
+    }
 
     onMount(async () => {
         // Persist defaults on load so they are available across pages
@@ -162,6 +167,7 @@
 
         try {
             const fixtureId = match.fixture.id;
+            const season = getMatchSeason(match);
 
             // Call the actual ML prediction API with current season
             const response = await fetch(

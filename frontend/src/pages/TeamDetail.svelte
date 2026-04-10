@@ -5,7 +5,7 @@
   import { _, locale } from "svelte-i18n";
   import { Link } from "svelte-routing";
   import { API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { formatDate as formatLocalizedDate } from "../lib/i18n/format.js";
 
   export let id;
@@ -25,7 +25,7 @@
   let loading = true;
   let error = null;
   let league = 39; // Default to Premier League
-  let season = getCurrentSeason();
+  let season = getLeagueSeason(39);
 
   // Player filtering & sorting
   let playerSearch = "";
@@ -80,6 +80,10 @@
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  function getFixtureSeason(fixture) {
+    return getLeagueSeason(fixture?.league?.id || league, fixture?.fixture?.date);
+  }
+
   onMount(async () => {
     try {
       // Get league from URL params if provided
@@ -88,7 +92,8 @@
       const seasonParam = urlParams.get("season");
       const parsedLeague = parseInt(leagueParam, 10);
       league = leagueParam && !isNaN(parsedLeague) ? parsedLeague : 39;
-      season = seasonParam ? parseInt(seasonParam, 10) || season : season;
+      const resolvedSeason = getLeagueSeason(league);
+      season = seasonParam ? parseInt(seasonParam, 10) || resolvedSeason : resolvedSeason;
 
       // Group 1: Core data in parallel
       const [teamRes, statsRes, standingsRes] = await Promise.all([
@@ -944,7 +949,7 @@
                     : "text-rose-400 bg-rose-400/10 border-rose-400/20"}
 
               <Link
-                to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || league}&season=${season}`}
+                to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || league}&season=${getFixtureSeason(fixture)}`}
                 class="flex items-center gap-4 p-4 rounded-lg hover:bg-white/5 transition-all border border-white/10 hover:border-accent/30"
               >
                 <div
@@ -988,7 +993,7 @@
           {#each upcoming as match}
             {@const isHome = match.teams.home.id == id}
             <Link
-              to={`/prediction/${match.fixture.id}?league=${match.league?.id || league}&season=${season}`}
+              to={`/prediction/${match.fixture.id}?league=${match.league?.id || league}&season=${getFixtureSeason(match)}`}
               class="flex items-center gap-4 p-4 rounded-lg hover:bg-white/5 transition-all border border-blue-500/30 hover:border-accent/50 bg-blue-500/5"
             >
               <div

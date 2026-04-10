@@ -7,7 +7,7 @@
   import ConfidenceBadge from "./ConfidenceBadge.svelte";
   import SkeletonLoader from "./SkeletonLoader.svelte";
   import { ML_API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
 
   // Import shared compare store from services
   import { compareStore } from "../services/compareStore.js";
@@ -22,7 +22,12 @@
   $: compareLeagues = $compareStore?.fixtureLeagues || {};
   $: compareButtonLabel = get(_)("compare.button", { values: { count: compareFixtures.length } });
 
-  const season = getCurrentSeason();
+  function getComparisonSeason(
+    fixtureId,
+    leagueId = compareLeagues[fixtureId] || 39,
+  ) {
+    return getLeagueSeason(leagueId);
+  }
 
   // Load prediction data for a fixture
   async function loadPrediction(fixtureId, leagueId, index) {
@@ -37,6 +42,7 @@
 
     try {
       const leagueParam = leagueId || compareLeagues[fixtureId] || 39;
+      const season = getComparisonSeason(fixtureId, leagueParam);
       const res = await fetch(
         `${ML_API_URL}/api/prediction/${fixtureId}?league=${leagueParam}&season=${season}`
       );
@@ -249,7 +255,7 @@
                   <!-- View Full -->
                   {@const leagueId = compareLeagues[compareFixtures[index]] || 39}
                   <Link
-                    to={`/prediction/${compareFixtures[index]}?league=${leagueId}&season=${season}`}
+                    to={`/prediction/${compareFixtures[index]}?league=${leagueId}&season=${getComparisonSeason(compareFixtures[index], leagueId)}`}
                     class="view-analysis-btn-sm"
                     on:click={closeCompare}
                   >

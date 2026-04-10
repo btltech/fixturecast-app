@@ -10,7 +10,7 @@
   import SharePrediction from "../components/SharePrediction.svelte";
   import ReminderButton from "../components/ReminderButton.svelte";
   import { compareStore } from "../services/compareStore.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { initReminders } from "../services/remindersStore.js";
   import { getSavedLeague, saveLeague } from "../services/preferences.js";
   import { LEAGUES } from "../services/leagues.js";
@@ -25,8 +25,8 @@
   $: compareFixtures = $compareStore?.fixtures || [];
   $: compareLeagues = $compareStore?.fixtureLeagues || {};
 
-  function toggleCompare(fixtureId) {
-    compareStore.addFixture(fixtureId, selectedLeague);
+  function toggleCompare(fixtureId, leagueId = selectedLeague) {
+    compareStore.addFixture(fixtureId, leagueId);
   }
 
   function isInCompare(fixtureId) {
@@ -149,7 +149,7 @@
   leagues.forEach((l) => (leaguesMap[l.id] = l));
 
   let selectedLeague = getSavedLeague(39); // Default: Premier League (persisted)
-  let season = getCurrentSeason();
+  let season;
   let fixtures = [];
   let deduplicatedFixtures = [];
   let loading = false;
@@ -184,6 +184,7 @@
 
   // Reactive filtered fixtures
   $: displayedFixtures = filterByDate(deduplicatedFixtures);
+  $: season = getLeagueSeason(selectedLeague, selectedDate);
 
   // UK timezone helpers
   function getUKDate() {
@@ -209,6 +210,14 @@
       hour: "2-digit",
       minute: "2-digit",
     });
+  }
+
+  function getFixtureLeagueId(fixture) {
+    return fixture?.league?.id || selectedLeague;
+  }
+
+  function getFixtureSeason(fixture) {
+    return getLeagueSeason(getFixtureLeagueId(fixture), fixture?.fixture?.date);
   }
 
   function getUKMidnightInfo() {
@@ -261,7 +270,8 @@
         // Fetch all leagues in parallel for the selected date
         const allLeagueIds = leagues.map((l) => l.id);
         const fetchPromises = allLeagueIds.map(async (leagueId) => {
-          const url = `${API_URL}/api/fixtures?league=${leagueId}&season=${season}&date=${date}`;
+          const leagueSeason = getLeagueSeason(leagueId, date);
+          const url = `${API_URL}/api/fixtures?league=${leagueId}&season=${leagueSeason}&date=${date}`;
           try {
             const res = await fetch(url);
             const data = await res.json();
@@ -287,13 +297,18 @@
           if (autoLoadPredictions && deduplicatedFixtures.length > 0) {
             const topFixtures = deduplicatedFixtures.slice(0, 4);
             topFixtures.forEach((fixture) => {
-              loadPrediction(fixture.fixture.id);
+              loadPrediction(
+                fixture.fixture.id,
+                getFixtureLeagueId(fixture),
+                fixture.fixture.date,
+              );
             });
           }
         }
       } else {
         // No date selected - fetch next games for selected league only
-        const url = `${API_URL}/api/fixtures?league=${selectedLeague}&season=${season}&next=40`;
+        const leagueSeason = getLeagueSeason(selectedLeague, selectedDate);
+        const url = `${API_URL}/api/fixtures?league=${selectedLeague}&season=${leagueSeason}&next=40`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -313,7 +328,11 @@
           if (autoLoadPredictions && deduplicatedFixtures.length > 0) {
             const topFixtures = deduplicatedFixtures.slice(0, 4);
             topFixtures.forEach((fixture) => {
-              loadPrediction(fixture.fixture.id);
+              loadPrediction(
+                fixture.fixture.id,
+                getFixtureLeagueId(fixture),
+                fixture.fixture.date,
+              );
             });
           }
         }
@@ -346,7 +365,11 @@
     }
   }
 
-  async function loadPrediction(fixtureId) {
+  async function loadPrediction(
+    fixtureId,
+    leagueId = selectedLeague,
+    fixtureDate = selectedDate,
+  ) {
     if (predictions[fixtureId] || loadingPredictions[fixtureId]) {
       return;
     }
@@ -358,8 +381,9 @@
     predictionRequestTokens = { ...predictionRequestTokens };
 
     try {
+      const predictionSeason = getLeagueSeason(leagueId, fixtureDate);
       const res = await fetch(
-        `${ML_API_URL}/api/prediction/${fixtureId}?league=${selectedLeague}&season=${season}`,
+        `${ML_API_URL}/api/prediction/${fixtureId}?league=${leagueId}&season=${predictionSeason}`,
       );
 
       if (res.ok) {
@@ -941,7 +965,8 @@
                 >
                   <!-- Compare Button (top right) -->
                   <button
-                    on:click|stopPropagation={() => toggleCompare(fixtureId)}
+                    on:click|stopPropagation={() =>
+                      toggleCompare(fixtureId, fixtureLeague.id)}
                     class="absolute top-2 right-2 p-1.5 rounded-lg transition-all z-10 {isInCompare(
                       fixtureId,
                     )
@@ -1071,7 +1096,7 @@
                         <span>A: {(pred.away_win_prob * 100).toFixed(0)}%</span>
                       </div>
                       <Link
-                        to={`/prediction/${fixtureId}?league=${fixtureLeague.id}&season=${season}`}
+                        to={`/prediction/${fixtureId}?league=${fixtureLeague.id}&season=${getFixtureSeason(fixture)}`}
                         class="view-analysis-btn"
                       >
                         <span>🔮</span>
@@ -1091,7 +1116,12 @@
                     </div>
                   {:else}
                     <button
-                      on:click={() => loadPrediction(fixtureId)}
+                      on:click={() =>
+                        loadPrediction(
+                          fixtureId,
+                          fixtureLeague.id,
+                          fixture.fixture.date,
+                        )}
                       disabled={loadingPredictions[fixtureId]}
                       class="w-full py-3 bg-accent/20 hover:bg-accent/30 text-accent rounded-lg font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 btn-interact"
                     >
@@ -1259,7 +1289,7 @@
                     <span>A: {(pred.away_win_prob * 100).toFixed(0)}%</span>
                   </div>
                   <Link
-                    to={`/prediction/${fixtureId}?league=${selectedLeague}&season=${season}`}
+                    to={`/prediction/${fixtureId}?league=${selectedLeague}&season=${getFixtureSeason(fixture)}`}
                     class="view-analysis-btn"
                   >
                     <span>🔮</span>
@@ -1280,7 +1310,8 @@
               {:else}
                 <!-- Show get prediction button -->
                 <button
-                  on:click={() => loadPrediction(fixtureId)}
+                  on:click={() =>
+                    loadPrediction(fixtureId, selectedLeague, fixture.fixture.date)}
                   disabled={loadingPredictions[fixtureId]}
                   class="w-full py-3 bg-accent/20 hover:bg-accent/30 text-accent rounded-lg font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 btn-interact"
                 >

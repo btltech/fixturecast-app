@@ -4,7 +4,7 @@
   import { _ } from "svelte-i18n";
   import { locale } from "../lib/i18n";
   import { API_URL } from "../config.js";
-  import { getCurrentSeason } from "../services/season.js";
+  import { getLeagueSeason } from "../services/season.js";
   import { getLeagueDisplay as leagueDisplay } from "../services/leagues.js";
   import MatchCardSkeleton from "../components/MatchCardSkeleton.svelte";
   import EmailSignup from "../components/EmailSignup.svelte";
@@ -23,10 +23,16 @@
   let upcomingDaysAhead = null;
   let loading = true;
   let error = null;
-  const season = getCurrentSeason();
 
   function getLeagueDisplay(leagueId) {
     return leagueDisplay(leagueId);
+  }
+
+  function getFixtureSeason(fixture, fallbackLeagueId = 39) {
+    return getLeagueSeason(
+      fixture?.league?.id || fallbackLeagueId,
+      fixture?.fixture?.date,
+    );
   }
 
   onMount(async () => {
@@ -236,7 +242,7 @@
       <!-- Inline Match of the Day Preview in Hero -->
       {#if !loading && matchOfTheDay}
         <Link
-          to={`/prediction/${matchOfTheDay.fixture.id}?league=${matchOfTheDay.league?.id || 39}&season=${season}`}
+          to={`/prediction/${matchOfTheDay.fixture.id}?league=${matchOfTheDay.league?.id || 39}&season=${getFixtureSeason(matchOfTheDay)}`}
           class="mt-10 inline-flex items-center gap-4 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all hover:scale-[1.02] group"
         >
           <div class="flex items-center gap-2">
@@ -371,7 +377,7 @@
       </div>
 
       <Link
-        to={`/prediction/${matchOfTheDay.fixture.id}?league=${matchOfTheDay.league?.id || 39}&season=${season}`}
+        to={`/prediction/${matchOfTheDay.fixture.id}?league=${matchOfTheDay.league?.id || 39}&season=${getFixtureSeason(matchOfTheDay)}`}
         class="block group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10"
       >
         <!-- Background Glow -->
@@ -497,7 +503,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-enter">
           {#each upcomingMatches.slice(0, 6) as fixture}
             <Link
-              to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || 39}&season=${season}`}
+              to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || 39}&season=${getFixtureSeason(fixture)}`}
               class="group glass-card p-4 hover:border-primary/30 transition-all hover:-translate-y-1"
             >
               <div class="flex items-center justify-between mb-3 text-xs text-slate-400">
@@ -572,7 +578,7 @@
       >
         {#each todaysMatches.slice(1, 7) as fixture}
           <Link
-            to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || 39}&season=${season}`}
+            to={`/prediction/${fixture.fixture.id}?league=${fixture.league?.id || 39}&season=${getFixtureSeason(fixture)}`}
             class="group glass-card p-4 hover:border-primary/30 transition-all hover:-translate-y-1"
           >
             <div
