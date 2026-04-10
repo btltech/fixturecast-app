@@ -43,13 +43,13 @@ jobs:
 
       - name: Trigger Railway deployment
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "⚠️ RAILWAY_TOKEN not set - deployment will happen via Railway's auto-deploy"
+          if [ -z "$RAILWAY_API_TOKEN" ]; then
+            echo "⚠️ RAILWAY_API_TOKEN not set - deployment will happen via Railway's auto-deploy"
             echo "Railway watches this repository and auto-deploys on push to main"
           else
-            echo "✅ Railway token configured"
+            echo "✅ Railway API token configured"
             echo "Deployment will be triggered automatically by Railway"
           fi
 

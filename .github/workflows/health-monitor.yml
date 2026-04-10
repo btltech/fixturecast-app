@@ -13,7 +13,7 @@ env:
   ML_API_URL: https://ml-api-production-6cfc.up.railway.app
   BACKEND_API_URL: https://backend-api-production-7b7d.up.railway.app
   RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+  RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
 
 jobs:
   health-check:
@@ -79,13 +79,13 @@ jobs:
 
       - name: Link Railway project/service
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           railway link -p "$RAILWAY_PROJECT_ID" -e production
 
       - name: Restart ML API
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           echo "🔄 Redeploying ML API..."
           railway redeploy --service ml-api --yes && echo "✅ ML API redeploy triggered" || echo "❌ Redeploy failed"
@@ -106,13 +106,13 @@ jobs:
 
       - name: Link Railway project/service
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           railway link -p "$RAILWAY_PROJECT_ID" -e production
 
       - name: Restart Backend API
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           echo "🔄 Redeploying Backend API..."
           railway redeploy --service backend-api --yes && echo "✅ Backend API redeploy triggered" || echo "❌ Redeploy failed"
