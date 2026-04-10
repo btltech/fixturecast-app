@@ -43,6 +43,110 @@
       "neutral_final": true,
       "prestige_factor": 1.1
     },
+    "1": {
+      "name": "FIFA World Cup",
+      "type": "international",
+      "format": "group_knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 1.8
+    },
+    "15": {
+      "name": "FIFA Club World Cup",
+      "type": "club_international_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 1.4
+    },
+    "16": {
+      "name": "CONCACAF Champions Cup",
+      "type": "continental_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.1
+    },
+    "17": {
+      "name": "AFC Champions League Elite",
+      "type": "continental_cup",
+      "format": "group_knockout",
+      "two_leg_knockout": true,
+      "neutral_final": true,
+      "prestige_factor": 1.1
+    },
+    "22": {
+      "name": "CONCACAF Gold Cup",
+      "type": "international",
+      "format": "group_knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 1.15
+    },
+    "29": {
+      "name": "WCQ - South America",
+      "type": "international_qualifier",
+      "format": "qualification_group",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.2
+    },
+    "30": {
+      "name": "WCQ - Asia",
+      "type": "international_qualifier",
+      "format": "qualification_group",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.15
+    },
+    "31": {
+      "name": "WCQ - CONCACAF",
+      "type": "international_qualifier",
+      "format": "qualification_group",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.15
+    },
+    "32": {
+      "name": "WCQ - Europe",
+      "type": "international_qualifier",
+      "format": "qualification_group",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.25
+    },
+    "34": {
+      "name": "WCQ - Africa",
+      "type": "international_qualifier",
+      "format": "qualification_group",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 1.15
+    },
+    "6": {
+      "name": "AFCON",
+      "type": "international",
+      "format": "group_knockout",
+      "two_leg_knockout": false,
+      "neutral_final": true,
+      "prestige_factor": 1.2
+    },
+    "8": {
+      "name": "World Friendlies",
+      "type": "friendly",
+      "format": "friendly",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.4
+    },
+    "9": {
+      "name": "Club Friendlies",
+      "type": "friendly",
+      "format": "friendly",
+      "two_leg_knockout": false,
+      "neutral_final": false,
+      "prestige_factor": 0.35
+    },
     "39": {
       "name": "Premier League",
       "type": "domestic_league",

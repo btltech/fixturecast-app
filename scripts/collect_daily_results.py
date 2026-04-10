@@ -21,6 +21,7 @@ import httpx
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.database import PredictionDB, init_database
+from backend.league_catalog import get_featured_league_map, get_league_season
 
 # API URLs
 ML_API_URL = os.environ.get("ML_API_URL", "https://ml-api-production-6cfc.up.railway.app")
@@ -28,41 +29,7 @@ BACKEND_API_URL = os.environ.get(
     "BACKEND_API_URL", "https://backend-api-production-7b7d.up.railway.app"
 )
 
-# Supported leagues - all 29 leagues
-LEAGUES = [
-    # European Competitions
-    (2, "Champions League"),
-    (3, "Europa League"),
-    (848, "Conference League"),
-    # Top Leagues
-    (39, "Premier League"),
-    (140, "La Liga"),
-    (135, "Serie A"),
-    (78, "Bundesliga"),
-    (61, "Ligue 1"),
-    (88, "Eredivisie"),
-    (94, "Primeira Liga"),
-    (218, "Austrian Bundesliga"),
-    (207, "Swiss Super League"),
-    (119, "Danish Superliga"),
-    (113, "Allsvenskan"),
-    (103, "Eliteserien"),
-    (307, "Saudi Pro League"),
-    (71, "Brasileirão"),
-    (203, "Süper Lig"),
-    (253, "MLS"),
-    (179, "Scottish Premiership"),
-    (144, "Belgian Pro League"),
-    # Championship Leagues
-    (40, "Championship"),
-    (141, "Segunda División"),
-    (136, "Serie B"),
-    (79, "2. Bundesliga"),
-    (62, "Ligue 2"),
-    # Domestic Cups
-    (45, "FA Cup"),
-    (48, "League Cup"),
-]
+LEAGUES = list(get_featured_league_map().items())
 
 UK_TZ = ZoneInfo("Europe/London")
 
@@ -92,9 +59,10 @@ def collect_finished_matches(days_back: int = 7) -> Dict:
 
             for league_id, league_name in LEAGUES:
                 try:
+                    season = get_league_season(league_id, check_date)
                     resp = client.get(
                         f"{BACKEND_API_URL}/api/fixtures",
-                        params={"league": league_id, "date": check_date},
+                        params={"league": league_id, "date": check_date, "season": season},
                         timeout=30,
                     )
                     if resp.status_code != 200:
@@ -127,7 +95,10 @@ def collect_finished_matches(days_back: int = 7) -> Dict:
                         try:
                             pred_resp = client.get(
                                 f"{ML_API_URL}/api/prediction/{fixture_id}",
-                                params={"league": league_id},
+                                params={
+                                    "league": league_id,
+                                    "season": get_league_season(league_id, match_date),
+                                },
                                 timeout=90,
                             )
                             if pred_resp.status_code != 200:

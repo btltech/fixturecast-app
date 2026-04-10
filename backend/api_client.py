@@ -9,6 +9,11 @@ from urllib.parse import urlparse
 
 import requests
 
+try:
+    from .league_catalog import get_cross_year_season, get_league_season
+except ImportError:
+    from league_catalog import get_cross_year_season, get_league_season
+
 # Optional Redis support
 try:
     import redis
@@ -239,6 +244,20 @@ class ApiClient:
         league_str = str(league_id)
         if league_str in self.competition_metadata:
             return self.competition_metadata[league_str]
+
+    def _resolve_season(
+        self,
+        season: Optional[int] = None,
+        league_id: Optional[int] = None,
+        date_like: Optional[Any] = None,
+    ) -> int:
+        if season is not None:
+            return int(season)
+
+        if league_id:
+            return get_league_season(int(league_id), date_like)
+
+        return get_cross_year_season(date_like)
 
         # Default for unknown leagues
         return {
@@ -488,15 +507,7 @@ class ApiClient:
         The 'next' parameter doesn't work well, so we use date ranges instead.
         If season is not provided, it will be automatically determined based on the current date.
         """
-        # Auto-detect season if not provided
-        if season is None:
-            today = datetime.now()
-            # Football seasons typically start in August
-            # If we're before August, use previous year, otherwise use current year
-            if today.month < 8:
-                season = today.year - 1
-            else:
-                season = today.year
+        season = self._resolve_season(season=season, league_id=league_id, date_like=date)
 
         params = {"season": season}
         if league_id:
@@ -521,25 +532,36 @@ class ApiClient:
     def get_fixture_details(self, fixture_id):
         return self._call_api("fixtures", {"id": fixture_id}, "fixtures")
 
-    def get_teams(self, league_id=None, season=2025, team_id=None):
+    def get_teams(self, league_id=None, season: Optional[int] = None, team_id=None):
         if team_id:
             # If fetching by ID, we don't need other params
             return self._call_api("teams", {"id": team_id}, "teams")
 
-        params = {"season": season}
+        params = {"season": self._resolve_season(season=season, league_id=league_id)}
         if league_id:
             params["league"] = league_id
         return self._call_api("teams", params, "teams")
 
-    def get_team_stats(self, team_id, league_id, season=2025):
+    def get_team_stats(self, team_id, league_id, season: Optional[int] = None):
         return self._call_api(
             "teams/statistics",
-            {"team": team_id, "league": league_id, "season": season},
+            {
+                "team": team_id,
+                "league": league_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+            },
             "team_stats",
         )
 
-    def get_standings(self, league_id, season=2025):
-        return self._call_api("standings", {"league": league_id, "season": season}, "standings")
+    def get_standings(self, league_id, season: Optional[int] = None):
+        return self._call_api(
+            "standings",
+            {
+                "league": league_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+            },
+            "standings",
+        )
 
     def get_h2h(self, team1_id, team2_id, last=10):
         """Get head-to-head matches between two teams"""
@@ -582,39 +604,73 @@ class ApiClient:
         """Get currently live matches"""
         return self._call_api("fixtures", {"live": "all"}, "fixtures")
 
-    def get_injuries(self, team_id, season=2025, ttl_override: Optional[int] = None):
+    def get_injuries(
+        self,
+        team_id,
+        season: Optional[int] = None,
+        ttl_override: Optional[int] = None,
+        league_id: Optional[int] = None,
+    ):
         return self._call_api(
-            "injuries", {"team": team_id, "season": season}, "injuries", ttl_override=ttl_override
+            "injuries",
+            {
+                "team": team_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+            },
+            "injuries",
+            ttl_override=ttl_override,
         )
 
     def get_odds(self, fixture_id, ttl_override: Optional[int] = None):
         return self._call_api("odds", {"fixture": fixture_id}, "odds", ttl_override=ttl_override)
 
-    def get_last_fixtures(self, team_id=None, league=None, league_id=None, season=2025, last=10):
+    def get_last_fixtures(self, team_id=None, league=None, season: Optional[int] = None, league_id=None, last=10):
         """Get recent completed fixtures"""
-        params = {"season": season, "last": last, "status": "FT"}
+        resolved_league_id = league or league_id
+        params = {
+            "season": self._resolve_season(season=season, league_id=resolved_league_id),
+            "last": last,
+            "status": "FT",
+        }
         if team_id:
             params["team"] = team_id
-        if league or league_id:
-            params["league"] = league or league_id
+        if resolved_league_id:
+            params["league"] = resolved_league_id
         return self._call_api("fixtures", params, "fixtures")
 
-    def get_next_fixtures(self, team_id, league_id, season=2025, next_n=3):
+    def get_next_fixtures(self, team_id, league_id, season: Optional[int] = None, next_n=3):
         return self._call_api(
             "fixtures",
-            {"team": team_id, "league": league_id, "season": season, "next": next_n},
+            {
+                "team": team_id,
+                "league": league_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+                "next": next_n,
+            },
             "fixtures",
         )
 
     # ========== NEW ENHANCED DATA ENDPOINTS ==========
 
-    def get_players(self, team_id, season=2025, ttl_override: Optional[int] = None):
+    def get_players(
+        self,
+        team_id,
+        season: Optional[int] = None,
+        ttl_override: Optional[int] = None,
+        league_id: Optional[int] = None,
+    ):
         """
         Get all players for a team with their season statistics.
         Returns goals, assists, minutes played, cards, etc.
         """
         return self._call_api(
-            "players", {"team": team_id, "season": season}, "players", ttl_override=ttl_override
+            "players",
+            {
+                "team": team_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+            },
+            "players",
+            ttl_override=ttl_override,
         )
 
     def get_fixture_events(self, fixture_id):
@@ -647,29 +703,46 @@ class ApiClient:
         """
         return self._call_api("coachs", {"team": team_id}, "coachs", ttl_override=ttl_override)
 
-    def get_sidelined(self, team_id, season=2025):
+    def get_sidelined(self, team_id, season: Optional[int] = None, league_id: Optional[int] = None):
         """
         Get detailed sidelined players (injuries + suspensions) with return dates.
         More detailed than basic injuries endpoint.
         """
         # Note: This may require the player ID, so we use injuries as fallback
         # If sidelined endpoint doesn't work well, injuries are already being fetched
-        return self._call_api("sidelined", {"team": team_id}, "sidelined")
+        return self._call_api(
+            "sidelined",
+            {
+                "team": team_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+            },
+            "sidelined",
+        )
 
-    def get_top_scorers(self, league_id, season=2025):
+    def get_top_scorers(self, league_id, season: Optional[int] = None):
         """
         Get top scorers in a league - useful for context about key players.
         """
         return self._call_api(
-            "players/topscorers", {"league": league_id, "season": season}, "players"
+            "players/topscorers",
+            {
+                "league": league_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+            },
+            "players",
         )
 
-    def get_top_assists(self, league_id, season=2025):
+    def get_top_assists(self, league_id, season: Optional[int] = None):
         """
         Get top assist providers in a league.
         """
         return self._call_api(
-            "players/topassists", {"league": league_id, "season": season}, "players"
+            "players/topassists",
+            {
+                "league": league_id,
+                "season": self._resolve_season(season=season, league_id=league_id),
+            },
+            "players",
         )
 
     def get_recent_fixture_stats(self, fixture_ids):

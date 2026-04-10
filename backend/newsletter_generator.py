@@ -21,6 +21,11 @@ sys.path.append(os.path.dirname(__file__))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+try:
+    from .league_catalog import get_featured_league_map, get_league_season
+except ImportError:
+    from league_catalog import get_featured_league_map, get_league_season
+
 # Kit (ConvertKit) Configuration
 KIT_API_KEY = os.environ.get("KIT_API_KEY", "")
 KIT_API_SECRET = os.environ.get("KIT_API_SECRET", "")
@@ -31,42 +36,7 @@ KIT_BROADCAST_TAG = os.environ.get(
 # ML API for predictions
 ML_API_URL = os.environ.get("ML_API_URL", "https://ml-api-production-6cfc.up.railway.app")
 
-# Featured leagues in the app (league IDs from API-Football)
-FEATURED_LEAGUES = {
-    # European Competitions
-    2: "Champions League",
-    3: "Europa League",
-    848: "Conference League",
-    # Top Leagues (Tier 1)
-    39: "Premier League",
-    140: "La Liga",
-    135: "Serie A",
-    78: "Bundesliga",
-    61: "Ligue 1",
-    88: "Eredivisie",
-    94: "Primeira Liga",
-    218: "Austrian Bundesliga",
-    207: "Swiss Super League",
-    119: "Danish Superliga",
-    113: "Allsvenskan",
-    103: "Eliteserien",
-    # International Top Leagues
-    307: "Saudi Pro League",
-    71: "Brasileirão",
-    203: "Süper Lig",
-    253: "MLS",
-    179: "Scottish Premiership",
-    144: "Belgian Pro League",
-    # Championship Leagues (Tier 2)
-    40: "Championship",
-    141: "Segunda División",
-    136: "Serie B",
-    79: "2. Bundesliga",
-    62: "Ligue 2",
-    # Domestic Cups
-    45: "FA Cup",
-    48: "League Cup",
-}
+FEATURED_LEAGUES = get_featured_league_map()
 
 
 def load_config():
@@ -93,7 +63,10 @@ def filter_featured_fixtures(fixtures: list) -> list:
 
 async def get_weekend_fixtures() -> list:
     """Get fixtures for this weekend (Saturday and Sunday) from featured leagues only."""
-    from api_client import ApiClient
+    try:
+        from .api_client import ApiClient
+    except ImportError:
+        from api_client import ApiClient
 
     config = load_config()
     api = ApiClient(config)
@@ -134,11 +107,16 @@ async def get_predictions_for_fixtures(fixtures: list) -> list:
             fixture_id = None
             try:
                 fixture_id = fixture.get("fixture", {}).get("id")
+                league_id = fixture.get("league", {}).get("id") or 39
+                season = get_league_season(league_id, fixture.get("fixture", {}).get("date"))
                 if not fixture_id:
                     continue
 
                 # Use correct API endpoint: /api/prediction/{fixture_id}
-                response = await client.get(f"{ML_API_URL}/api/prediction/{fixture_id}")
+                response = await client.get(
+                    f"{ML_API_URL}/api/prediction/{fixture_id}",
+                    params={"league": league_id, "season": season},
+                )
                 if response.status_code == 200:
                     pred_data = response.json()
                     pred_data["fixture_info"] = fixture

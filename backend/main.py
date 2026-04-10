@@ -22,6 +22,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
+try:
+    from .league_catalog import get_cross_year_season as _catalog_cross_year_season, get_league_season as _catalog_league_season
+except ImportError:
+    from league_catalog import get_cross_year_season as _catalog_cross_year_season, get_league_season as _catalog_league_season
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -102,37 +107,13 @@ BIG_TEAMS = {
 
 
 def _get_current_season() -> int:
-    """Dynamically determine the current football season.
-    European seasons are labeled by start year (e.g. 2025 for 2025/26).
-    Season ticks over in July."""
-    now = datetime.now()
-    return now.year if now.month >= 7 else now.year - 1
-
-
-# Leagues whose active season runs on the current calendar year
-# (e.g. Copa Libertadores 2026, MLS 2026, J1 League 2026).
-# Everything else uses the European cross-year convention handled by _get_current_season().
-_CALENDAR_YEAR_LEAGUES: frozenset = frozenset([
-    13, 11, 73, 130,        # Copa Libertadores, Copa Sudamericana, Copa do Brasil, Copa Argentina
-    98, 292,                 # J1 League, K League 1
-    253, 262,                # MLS, Liga MX
-    128, 239, 265,           # Argentine Primera, Colombian Primera, Chilean Primera
-    296, 278, 340, 169, 255, # Thai, Malaysian, Vietnamese, Chinese, USL
-    71,                      # Brasileirão (starts April but labeled by current year)
-    # FIFA / Confederation competitions — run on current calendar year
-    1, 15, 16, 17, 22, 29, 30, 31, 32, 34, 6,
-    # Friendlies — no fixed season, always current year
-    8, 9,
-])
+    """Return the current cross-year season start year."""
+    return _catalog_cross_year_season()
 
 
 def _get_league_season(league_id: int) -> int:
-    """Return the correct season year for a given league.
-    Calendar-year leagues (South American, Asian, MLS etc.) use the current year.
-    European/African cross-year leagues use _get_current_season()."""
-    if league_id in _CALENDAR_YEAR_LEAGUES:
-        return datetime.now().year
-    return _get_current_season()
+    """Return the active season for a given league."""
+    return _catalog_league_season(league_id)
 
 
 def _get_today_str() -> str:
@@ -1243,7 +1224,8 @@ async def get_teams(
         if not league and not id:
             league = 39
 
-        result = api_client.get_teams(league_id=league, season=season or _get_current_season(), team_id=id)
+        resolved_season = season or (_get_league_season(league) if league else _get_current_season())
+        result = api_client.get_teams(league_id=league, season=resolved_season, team_id=id)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1282,7 +1264,7 @@ async def get_team_stats(
         raise HTTPException(status_code=503, detail="API client not initialized")
 
     try:
-        result = api_client.get_team_stats(team_id, league, season or _get_current_season())
+        result = api_client.get_team_stats(team_id, league, season or _get_league_season(league))
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1303,7 +1285,7 @@ def get_team_fixtures(
 
     try:
         result = api_client.get_last_fixtures(
-            team_id=team_id, league=league, season=season or _get_current_season(), last=last
+            team_id=team_id, league=league, season=season or _get_league_season(league), last=last
         )
         return result
     except Exception as e:
@@ -1324,14 +1306,18 @@ async def get_team_upcoming(
         raise HTTPException(status_code=503, detail="API client not initialized")
 
     try:
-        result = api_client.get_next_fixtures(team_id, league, season or _get_current_season(), next)
+        result = api_client.get_next_fixtures(team_id, league, season or _get_league_season(league), next)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/team/{team_id}/injuries")
-async def get_team_injuries(team_id: int, season: int = Query(None, description="Season year (auto-detected if omitted)")):
+async def get_team_injuries(
+    team_id: int,
+    season: int = Query(None, description="Season year (auto-detected if omitted)"),
+    league: int = Query(None, description="League ID for season auto-detection"),
+):
     """Get current injuries for a specific team"""
     if team_id < 1 or team_id > 999999:
         raise HTTPException(status_code=400, detail="Invalid team ID")
@@ -1339,14 +1325,22 @@ async def get_team_injuries(team_id: int, season: int = Query(None, description=
         raise HTTPException(status_code=503, detail="API client not initialized")
 
     try:
-        result = api_client.get_injuries(team_id, season or _get_current_season())
+        result = api_client.get_injuries(
+            team_id,
+            season or (_get_league_season(league) if league else _get_current_season()),
+            league_id=league,
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/team/{team_id}/squad")
-async def get_team_squad(team_id: int, season: int = Query(None, description="Season year (auto-detected if omitted)")):
+async def get_team_squad(
+    team_id: int,
+    season: int = Query(None, description="Season year (auto-detected if omitted)"),
+    league: int = Query(None, description="League ID for season auto-detection"),
+):
     """Get squad/players for a specific team"""
     if team_id < 1 or team_id > 999999:
         raise HTTPException(status_code=400, detail="Invalid team ID")
@@ -1354,7 +1348,11 @@ async def get_team_squad(team_id: int, season: int = Query(None, description="Se
         raise HTTPException(status_code=503, detail="API client not initialized")
 
     try:
-        result = api_client.get_players(team_id, season or _get_current_season())
+        result = api_client.get_players(
+            team_id,
+            season or (_get_league_season(league) if league else _get_current_season()),
+            league_id=league,
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

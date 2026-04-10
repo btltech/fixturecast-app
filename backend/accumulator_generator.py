@@ -8,6 +8,11 @@ import random
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
+try:
+    from .league_catalog import get_featured_league_ids
+except ImportError:
+    from league_catalog import get_featured_league_ids
+
 
 def _to_float(value: Any, default: float = 0.0) -> float:
     try:
@@ -65,17 +70,7 @@ class AccumulatorGenerator:
     EDGE_MARGIN = float(os.getenv("EDGE_MARGIN", "0.02"))
 
     # Featured leagues for diversity
-    FEATURED_LEAGUES = {
-        2, 3, 848,  # European competitions
-        39, 140, 135, 78, 61, 88, 94, 218, 207, 119, 113, 103,  # Top leagues
-        307, 71, 203, 253, 179, 144,  # International top
-        128, 262, 98, 239, 265, 292, 323, 435,  # Americas & Asia
-        233, 289, 200, 213, 198, 332, 338,  # Africa
-        197, 106, 271, 283, 345,  # Europe expansion
-        116, 183, 244, 164, 169,  # High-scoring small leagues
-        40, 141, 136, 79, 62,  # Second divisions
-        45, 48,  # Cups
-    }
+    FEATURED_LEAGUES = set(get_featured_league_ids())
 
     # European competitions with less historical data (lower thresholds)
     EUROPEAN_COMPETITIONS = {2, 3, 848}  # Champions League, Europa League, Conference League

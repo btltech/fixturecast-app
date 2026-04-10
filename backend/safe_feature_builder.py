@@ -4,10 +4,24 @@ from datetime import datetime
 class FeatureBuilder:
 
     # Competition type encoding
-    COMPETITION_TYPES = {"domestic_league": 0, "european_cup": 1, "domestic_cup": 2, "other": 3}
+    COMPETITION_TYPES = {
+        "domestic_league": 0,
+        "european_cup": 1,
+        "continental_cup": 1,
+        "club_international_cup": 1,
+        "domestic_cup": 2,
+        "international": 3,
+        "international_qualifier": 3,
+        "friendly": 3,
+        "other": 3,
+    }
 
     # European league IDs for cross-league team matching
     EUROPEAN_COMPETITIONS = {2, 3, 848}  # UCL, UEL, UECL
+    CLUB_CONTINENTAL_COMPETITIONS = {11, 12, 13, 16, 17, 15}
+    INTERNATIONAL_COMPETITIONS = {1, 5, 6, 22}
+    INTERNATIONAL_QUALIFIERS = {29, 30, 31, 32, 34}
+    FRIENDLY_COMPETITIONS = {8, 9}
 
     # Top domestic leagues by prestige
     TOP_LEAGUES = {39, 140, 135, 78, 61}  # PL, La Liga, Serie A, Bundesliga, Ligue 1
@@ -892,7 +906,10 @@ class FeatureBuilder:
             # Competition type (one-hot encoded)
             "is_domestic_league": 0,
             "is_european_cup": 0,
+            "is_continental_cup": 0,
             "is_domestic_cup": 0,
+            "is_international_competition": 0,
+            "is_qualifier_competition": 0,
             # Stage features
             "is_knockout_stage": 0,
             "is_group_stage": 0,
@@ -922,18 +939,20 @@ class FeatureBuilder:
 
         comp_type = competition_info.get("type", "domestic_league")
         features["competition_type"] = comp_type  # For analysis LLM
+        features["competition_type_encoded"] = self.COMPETITION_TYPES.get(comp_type, 3)
 
         # Set competition type flags
         if comp_type == "domestic_league":
             features["is_domestic_league"] = 1
-            features["competition_type_encoded"] = 0
-        elif comp_type == "european_cup":
+        elif comp_type in {"european_cup", "continental_cup", "club_international_cup"}:
             features["is_european_cup"] = 1
-            features["is_european"] = True  # For analysis LLM
-            features["competition_type_encoded"] = 1
+            features["is_continental_cup"] = 1
+            features["is_european"] = comp_type == "european_cup"  # For analysis LLM
         elif comp_type == "domestic_cup":
             features["is_domestic_cup"] = 1
-            features["competition_type_encoded"] = 2
+        elif comp_type in {"international", "international_qualifier", "friendly"}:
+            features["is_international_competition"] = 1
+            features["is_qualifier_competition"] = 1 if comp_type == "international_qualifier" else 0
 
         # Set prestige factor
         features["competition_prestige"] = competition_info.get("prestige_factor", 1.0)
@@ -972,12 +991,17 @@ class FeatureBuilder:
             stakes *= 1.3
         if features["is_final"]:
             stakes *= 1.5
-        if features["is_european_cup"]:
+        if features["is_european_cup"] or features["is_continental_cup"]:
             stakes *= 1.2
+        if features["is_international_competition"]:
+            stakes *= 1.1 if features["is_qualifier_competition"] else 1.25
         features["stakes_multiplier"] = stakes
 
-        # Form reliability (lower for European games - domestic form less predictive)
-        if features["is_european_cup"]:
+        # Form reliability is lower for club continental and international games.
+        if features["is_international_competition"]:
+            features["home_form_reliability"] = 0.55 if features["is_qualifier_competition"] else 0.45
+            features["away_form_reliability"] = 0.55 if features["is_qualifier_competition"] else 0.45
+        elif features["is_european_cup"] or features["is_continental_cup"]:
             features["home_form_reliability"] = 0.6
             features["away_form_reliability"] = 0.6
         else:
@@ -1014,6 +1038,42 @@ class FeatureBuilder:
                 "two_leg_knockout": True,
                 "neutral_final": True,
                 "prestige_factor": 1.5 if league_id == 2 else 1.3 if league_id == 3 else 1.1,
+                "name": name,
+            }
+        elif league_id in self.CLUB_CONTINENTAL_COMPETITIONS:
+            return {
+                "type": "club_international_cup" if league_id == 15 else "continental_cup",
+                "format": "group_knockout",
+                "two_leg_knockout": league_id in {11, 12, 13, 16, 17},
+                "neutral_final": True,
+                "prestige_factor": 1.4 if league_id == 15 else 1.2,
+                "name": name,
+            }
+        elif league_id in self.INTERNATIONAL_COMPETITIONS:
+            return {
+                "type": "international",
+                "format": "group_knockout",
+                "two_leg_knockout": False,
+                "neutral_final": True,
+                "prestige_factor": 1.6 if league_id == 1 else 1.2,
+                "name": name,
+            }
+        elif league_id in self.INTERNATIONAL_QUALIFIERS:
+            return {
+                "type": "international_qualifier",
+                "format": "qualification_group",
+                "two_leg_knockout": False,
+                "neutral_final": False,
+                "prestige_factor": 1.1,
+                "name": name,
+            }
+        elif league_id in self.FRIENDLY_COMPETITIONS:
+            return {
+                "type": "friendly",
+                "format": "friendly",
+                "two_leg_knockout": False,
+                "neutral_final": False,
+                "prestige_factor": 0.4,
                 "name": name,
             }
         elif league_id in self.TOP_LEAGUES:
