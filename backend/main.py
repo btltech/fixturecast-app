@@ -40,6 +40,8 @@ print("DEBUG: Executing import database...", flush=True)
 import database
 print("DEBUG: Executing from api_client import ApiClient...", flush=True)
 from api_client import ApiClient
+print("DEBUG: Executing from metrics_api import router as metrics_router...", flush=True)
+from metrics_api import router as metrics_router
 print("DEBUG: Executing from fastapi.responses import Response...", flush=True)
 from fastapi.responses import Response
 print("DEBUG: Executing from og_image_generator import...", flush=True)
@@ -322,6 +324,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Mount sub-routers
+app.include_router(metrics_router)
 
 
 @app.middleware("http")
@@ -1419,6 +1424,45 @@ async def get_live_scores():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/og-image/daily")
+async def get_daily_og_image():
+    """Generate OG image for daily fixtures page"""
+    try:
+        from datetime import date
+
+        today_str = date.today().strftime("%B %d, %Y")
+        image_data = generate_default_og_image(
+            title="Today's Predictions", subtitle=f"AI Football Predictions - {today_str}"
+        )
+        return Response(
+            content=image_data,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
+    except Exception as e:
+        logger.error(f"Error generating daily OG image: {e}")
+        image_data = generate_default_og_image()
+        return Response(content=image_data, media_type="image/png")
+
+
+@app.get("/api/og-image/home")
+async def get_home_og_image():
+    """Generate OG image for homepage"""
+    try:
+        image_data = generate_default_og_image(
+            title="FixtureCast", subtitle="AI-Powered Football Predictions"
+        )
+        return Response(
+            content=image_data,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=86400"},  # Cache for 24 hours
+        )
+    except Exception as e:
+        logger.error(f"Error generating home OG image: {e}")
+        image_data = generate_default_og_image()
+        return Response(content=image_data, media_type="image/png")
+
+
 @app.get("/api/og-image/{fixture_id}")
 async def get_og_image(fixture_id: int, league: int = Query(39)):
     """Generate Open Graph (OG) image for social media sharing"""
@@ -1476,45 +1520,6 @@ async def get_og_image(fixture_id: int, league: int = Query(39)):
     except Exception as e:
         logger.error(f"Error generating OG image: {e}")
         # Return default image on error
-        image_data = generate_default_og_image()
-        return Response(content=image_data, media_type="image/png")
-
-
-@app.get("/api/og-image/daily")
-async def get_daily_og_image():
-    """Generate OG image for daily fixtures page"""
-    try:
-        from datetime import date
-
-        today_str = date.today().strftime("%B %d, %Y")
-        image_data = generate_default_og_image(
-            title="Today's Predictions", subtitle=f"AI Football Predictions - {today_str}"
-        )
-        return Response(
-            content=image_data,
-            media_type="image/png",
-            headers={"Cache-Control": "public, max-age=3600"},
-        )
-    except Exception as e:
-        logger.error(f"Error generating daily OG image: {e}")
-        image_data = generate_default_og_image()
-        return Response(content=image_data, media_type="image/png")
-
-
-@app.get("/api/og-image/home")
-async def get_home_og_image():
-    """Generate OG image for homepage"""
-    try:
-        image_data = generate_default_og_image(
-            title="FixtureCast", subtitle="AI-Powered Football Predictions"
-        )
-        return Response(
-            content=image_data,
-            media_type="image/png",
-            headers={"Cache-Control": "public, max-age=86400"},  # Cache for 24 hours
-        )
-    except Exception as e:
-        logger.error(f"Error generating home OG image: {e}")
         image_data = generate_default_og_image()
         return Response(content=image_data, media_type="image/png")
 
