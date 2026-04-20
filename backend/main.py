@@ -41,7 +41,14 @@ import database
 print("DEBUG: Executing from api_client import ApiClient...", flush=True)
 from api_client import ApiClient
 print("DEBUG: Executing from metrics_api import router as metrics_router...", flush=True)
-from metrics_api import router as metrics_router
+try:
+    from metrics_api import router as metrics_router
+    _metrics_router_available = True
+    print("DEBUG: metrics_api imported successfully.", flush=True)
+except ImportError:
+    metrics_router = None
+    _metrics_router_available = False
+    print("WARNING: metrics_api not available, /api/metrics/* routes will not be served.", flush=True)
 print("DEBUG: Executing from fastapi.responses import Response...", flush=True)
 from fastapi.responses import Response
 print("DEBUG: Executing from og_image_generator import...", flush=True)
@@ -326,7 +333,8 @@ app.add_middleware(
 )
 
 # Mount sub-routers
-app.include_router(metrics_router)
+if _metrics_router_available and metrics_router is not None:
+    app.include_router(metrics_router)
 
 
 @app.middleware("http")
