@@ -6,6 +6,7 @@ Runs on port 8001 to avoid conflict with ML API (port 8000).
 """
 
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -419,7 +420,7 @@ async def debug_smart_markets_import(request: Request):
 
     expected = os.environ.get("ADMIN_SECRET", "")
     provided = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    if not expected or provided != expected:
+    if not expected or not hmac.compare_digest(provided, expected):
         raise HTTPException(status_code=403, detail="Unauthorized")
 
     try:
@@ -439,7 +440,7 @@ async def debug_database(request: Request):
     """Debug endpoint to check database status (admin only)"""
     expected = os.environ.get("ADMIN_SECRET", "")
     provided = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    if not expected or provided != expected:
+    if not expected or not hmac.compare_digest(provided, expected):
         raise HTTPException(status_code=403, detail="Unauthorized")
     from datetime import date, timedelta
 
@@ -523,7 +524,8 @@ async def get_api_usage():
             ),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/cache/stats")
@@ -537,7 +539,8 @@ async def get_cache_stats():
         ttls = getattr(api_client, "ttls", {})
         return {"cache_stats": cache_stats, "cache_ttl_settings": ttls}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/cache/clear")
@@ -552,7 +555,8 @@ async def clear_cache():
             deleted = api_client.cache.clear_pattern("*")
         return {"message": "Cache cleared successfully", "deleted": deleted}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/team/{team_id}/coach")
@@ -592,7 +596,7 @@ async def send_newsletter_get(request: Request, secret: str = Query(default=""))
         expected_secret = os.environ.get("ADMIN_SECRET", "")
         header_secret = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
         provided = header_secret or secret
-        if not expected_secret or provided != expected_secret:
+        if not expected_secret or not hmac.compare_digest(provided, expected_secret):
             raise HTTPException(status_code=403, detail="Unauthorized")
 
         from newsletter_generator import (
@@ -636,7 +640,8 @@ async def send_newsletter_get(request: Request, secret: str = Query(default=""))
         raise
     except Exception as e:
         logger.error(f"Newsletter send error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/newsletter/generate")
@@ -700,7 +705,8 @@ async def generate_newsletter(request: Request):
         raise
     except Exception as e:
         logger.error(f"Newsletter generation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/newsletter/preview")
@@ -919,7 +925,8 @@ async def get_fixtures(
             result = api_client.get_fixtures(league_id=league, season=season or _get_league_season(league), next_n=next)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -1111,7 +1118,8 @@ async def get_todays_fixtures():
     except Exception as e:
         if not fut.done():
             fut.set_exception(e)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/match-of-the-day")
@@ -1143,7 +1151,8 @@ async def get_match_of_the_day():
 
         return {"match": None, "message": "No matches scheduled for today", "date": today}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/standings/{league_id}/{season}")
@@ -1219,7 +1228,8 @@ async def get_standings(
         }
     except Exception as e:
         logger.error(f"Error fetching standings: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/teams")
@@ -1241,7 +1251,8 @@ async def get_teams(
         result = api_client.get_teams(league_id=league, season=resolved_season, team_id=id)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/teams/search")
@@ -1261,7 +1272,8 @@ async def search_teams(
         result = api_client._call_api("teams", {"search": query}, "teams")
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/team/{team_id}/stats")
@@ -1280,7 +1292,8 @@ async def get_team_stats(
         result = api_client.get_team_stats(team_id, league, season or _get_league_season(league))
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/team/{team_id}/fixtures")
@@ -1302,7 +1315,8 @@ def get_team_fixtures(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/team/{team_id}/upcoming")
@@ -1322,7 +1336,8 @@ async def get_team_upcoming(
         result = api_client.get_next_fixtures(team_id, league, season or _get_league_season(league), next)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/team/{team_id}/injuries")
@@ -1345,7 +1360,8 @@ async def get_team_injuries(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/team/{team_id}/squad")
@@ -1368,7 +1384,8 @@ async def get_team_squad(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/standings")
@@ -1384,7 +1401,8 @@ async def get_standings_query(
         result = api_client.get_standings(league, season or _get_league_season(league))
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/results")
@@ -1401,7 +1419,8 @@ async def get_results(
         result = api_client.get_last_fixtures(league=league, season=season or _get_league_season(league), last=last)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/h2h/{team1_id}/{team2_id}")
@@ -1416,7 +1435,8 @@ async def get_h2h(
         result = api_client.get_h2h(team1_id, team2_id, last)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/live")
@@ -1429,7 +1449,8 @@ async def get_live_scores():
         result = api_client.get_live_fixtures()
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/og-image/daily")
@@ -1590,7 +1611,8 @@ async def get_today_accumulators(autogenerate: bool = Query(True)):
         return {"success": True, "date": datetime.now().strftime("%Y-%m-%d"), "accumulators": accas}
     except Exception as e:
         logger.error(f"Error fetching today's accumulators: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/accumulators/history")
@@ -1647,7 +1669,8 @@ async def get_accumulator_history(days: int = Query(30, ge=1, le=90)):
         return {"success": True, "days": days, "history": history, "stats": stats}
     except Exception as e:
         logger.error(f"Error fetching accumulator history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/accumulators/generate")
@@ -1817,7 +1840,8 @@ async def generate_accumulators():
 
     except Exception as e:
         logger.error(f"Error generating accumulators: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/accumulators/update-results")
@@ -1926,7 +1950,8 @@ async def update_accumulator_results():
 
     except Exception as e:
         logger.error(f"Error updating accumulator results: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/accumulators/stats")
@@ -1942,7 +1967,8 @@ async def get_accumulator_stats(days: int = Query(30, ge=1, le=365)):
 
     except Exception as e:
         logger.error(f"Error fetching accumulator stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/smart-markets/stats")
@@ -1962,7 +1988,8 @@ async def get_smart_markets_stats(days: int = Query(30, ge=1, le=90)):
 
         logger.error(f"Error fetching Smart Markets stats: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/smart-markets/tag")
@@ -1986,7 +2013,8 @@ async def tag_smart_markets():
 
         logger.error(f"Error tagging Smart Markets: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -2015,7 +2043,8 @@ async def social_media_post(request: Request):
         }
     except Exception as e:
         logger.error(f"Error posting to social media: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/social/status")
@@ -2041,7 +2070,8 @@ async def social_media_status():
         }
     except Exception as e:
         logger.error(f"Error getting social media status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/social/telegram/send")
@@ -2061,7 +2091,8 @@ async def telegram_send(request: Request):
         }
     except Exception as e:
         logger.error(f"Error sending Telegram message: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/social/twitter/post")
@@ -2081,7 +2112,8 @@ async def twitter_post(request: Request):
         }
     except Exception as e:
         logger.error(f"Error posting to Twitter: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/social/discord/post")
@@ -2101,7 +2133,8 @@ async def discord_post(request: Request):
         }
     except Exception as e:
         logger.error(f"Error posting to Discord: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.post("/api/social/prediction")
@@ -2125,7 +2158,8 @@ async def social_prediction(request: Request):
         }
     except Exception as e:
         logger.error(f"Error posting prediction: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 if __name__ == "__main__":

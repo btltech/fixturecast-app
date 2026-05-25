@@ -4,13 +4,24 @@
  * The AI is strictly instructed NOT to invent fixtures, scores, or predictions.
  */
 
-const BACKEND_API = "https://backend-api-production-7b7d.up.railway.app";
+// Route through the Cloudflare cache worker — never call Railway directly from here.
+const BACKEND_API = "https://api.fixturecast.com";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+const ALLOWED_ORIGINS = [
+  "https://fixturecast.com",
+  "https://www.fixturecast.com",
+];
+
+function getCorsHeaders(request) {
+  const origin = request.headers.get("Origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin",
+  };
+}
 
 // Per-session rate limit: max 20 requests per 60 seconds
 const RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -19,13 +30,22 @@ const RATE_LIMIT_MAX_REQUESTS = 20;
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: CORS_HEADERS });
+      return new Response(null, { headers: getCorsHeaders(request) });
+    }
+
+    // Reject requests from disallowed origins (blocks direct cross-origin abuse)
+    const origin = request.headers.get("Origin") || "";
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     if (request.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method not allowed" }), {
         status: 405,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
@@ -35,7 +55,7 @@ export default {
     } catch {
       return new Response(JSON.stringify({ error: "Invalid JSON" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
@@ -44,14 +64,14 @@ export default {
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Message is required" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
     if (message.length > 500) {
       return new Response(JSON.stringify({ error: "Message too long (max 500 characters)" }), {
         status: 400,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(request) },
       });
     }
 
@@ -63,7 +83,7 @@ export default {
       if (count >= RATE_LIMIT_MAX_REQUESTS) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please wait a moment.", retryAfter: RATE_LIMIT_WINDOW_SECONDS }),
-          { status: 429, headers: { "Content-Type": "application/json", ...CORS_HEADERS } }
+          { status: 429, headers: { "Content-Type": "application/json", ...getCorsHeaders(request) } }
         );
       }
       await env.KV.put(key, String(count + 1), { expirationTtl: RATE_LIMIT_WINDOW_SECONDS });
@@ -93,7 +113,7 @@ export default {
 
     return new Response(
       JSON.stringify({ response: aiResponse, sessionId, site: "fixturecast" }),
-      { status: 200, headers: { "Content-Type": "application/json", ...CORS_HEADERS } }
+      { status: 200, headers: { "Content-Type": "application/json", ...getCorsHeaders(request) } }
     );
   },
 };
@@ -105,9 +125,21 @@ export default {
 async function fetchLiveContext(userMessage) {
   const sections = [];
 
+  // Helper: fetch with a 5-second timeout so a slow/dead backend
+  // doesn't stall the AI response for the user.
+  async function fetchWithTimeout(url, opts = {}) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 5000);
+    try {
+      return await fetch(url, { ...opts, signal: controller.signal });
+    } finally {
+      clearTimeout(id);
+    }
+  }
+
   try {
     // Always fetch today's fixtures
-    const fixtureRes = await fetch(`${BACKEND_API}/api/fixtures/today`, {
+    const fixtureRes = await fetchWithTimeout(`${BACKEND_API}/api/fixtures/today`, {
       headers: { Accept: "application/json" },
       cf: { cacheTtl: 120 },
     });
@@ -141,7 +173,7 @@ async function fetchLiveContext(userMessage) {
   // Fetch match of the day when relevant
   if (/match.of.the.day|motd|big.game|best.game|top.game/i.test(userMessage)) {
     try {
-      const motdRes = await fetch(`${BACKEND_API}/api/match-of-the-day`, {
+      const motdRes = await fetchWithTimeout(`${BACKEND_API}/api/match-of-the-day`, {
         headers: { Accept: "application/json" },
         cf: { cacheTtl: 300 },
       });
@@ -170,7 +202,7 @@ async function fetchLiveContext(userMessage) {
   // Fetch predictions for today's fixtures when relevant
   if (/prediction|predict|who will win|who wins|chance|probability|odds/i.test(userMessage)) {
     try {
-      const predRes = await fetch(`${BACKEND_API}/api/fixtures/today`, {
+      const predRes = await fetchWithTimeout(`${BACKEND_API}/api/fixtures/today`, {
         headers: { Accept: "application/json" },
         cf: { cacheTtl: 120 },
       });
@@ -195,7 +227,7 @@ async function fetchLiveContext(userMessage) {
   // If the user is asking about accumulators, fetch them too
   if (/acca|accumulator|tips/i.test(userMessage)) {
     try {
-      const accaRes = await fetch(`${BACKEND_API}/api/accumulators/today`, {
+      const accaRes = await fetchWithTimeout(`${BACKEND_API}/api/accumulators/today`, {
         headers: { Accept: "application/json" },
         cf: { cacheTtl: 300 },
       });
