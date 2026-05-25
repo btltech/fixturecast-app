@@ -80,15 +80,17 @@ jobs:
             echo "❌ RAILWAY_API_TOKEN secret not set — cannot restart ML API"
             exit 1
           fi
-          npm i -g @railway/cli
+          npm i -g @railway/cli@^4
           echo "🔄 Redeploying ML API..."
-          RAILWAY_TOKEN="$RAILWAY_API_TOKEN" railway redeploy \
-            --project-id "$RAILWAY_PROJECT_ID" \
-            --environment production \
-            --service ml-api \
-            --yes \
-            && echo "✅ ML API redeploy triggered" \
-            || { echo "❌ Redeploy failed"; exit 1; }
+          for attempt in 1 2 3; do
+            RAILWAY_TOKEN="$RAILWAY_API_TOKEN" railway redeploy \
+              --project-id "$RAILWAY_PROJECT_ID" \
+              --environment production \
+              --service ml-api \
+              --yes && echo "✅ ML API redeploy triggered (attempt $attempt)" && break
+            echo "⚠ Attempt $attempt failed"
+            [ $attempt -lt 3 ] && sleep 15
+          done || { echo "❌ All ML API redeploy attempts failed"; exit 1; }
 
   auto-restart-backend:
     runs-on: ubuntu-latest
@@ -104,15 +106,17 @@ jobs:
             echo "❌ RAILWAY_API_TOKEN secret not set — cannot restart Backend API"
             exit 1
           fi
-          npm i -g @railway/cli
+          npm i -g @railway/cli@^4
           echo "🔄 Redeploying Backend API..."
-          RAILWAY_TOKEN="$RAILWAY_API_TOKEN" railway redeploy \
-            --project-id "$RAILWAY_PROJECT_ID" \
-            --environment production \
-            --service backend-api \
-            --yes \
-            && echo "✅ Backend API redeploy triggered" \
-            || { echo "❌ Redeploy failed"; exit 1; }
+          for attempt in 1 2 3; do
+            RAILWAY_TOKEN="$RAILWAY_API_TOKEN" railway redeploy \
+              --project-id "$RAILWAY_PROJECT_ID" \
+              --environment production \
+              --service backend-api \
+              --yes && echo "✅ Backend API redeploy triggered (attempt $attempt)" && break
+            echo "⚠ Attempt $attempt failed"
+            [ $attempt -lt 3 ] && sleep 15
+          done || { echo "❌ All Backend API redeploy attempts failed"; exit 1; }
 
   verify-recovery:
     runs-on: ubuntu-latest
@@ -123,6 +127,9 @@ jobs:
         run: sleep 180  # Wait 3 minutes for ML API to load PyTorch models
 
       - name: Verify recovery
+        env:
+          ML_WAS_RESTARTED: ${{ needs.auto-restart-ml.result == 'success' }}
+          BACKEND_WAS_RESTARTED: ${{ needs.auto-restart-backend.result == 'success' }}
         run: |
           echo "🔍 Verifying service recovery..."
 
@@ -132,14 +139,24 @@ jobs:
           echo "## 🔄 Recovery Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          FAIL=0
+
           if [ "$ML_STATUS" = "200" ]; then
             echo "✅ ML API recovered (HTTP $ML_STATUS)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ ML API still unhealthy (HTTP $ML_STATUS) - Manual intervention required!" >> $GITHUB_STEP_SUMMARY
+            echo "✅ ML API recovered"
+          elif [ "$ML_WAS_RESTARTED" = "true" ]; then
+            echo "❌ ML API still unhealthy (HTTP $ML_STATUS) after restart — manual intervention needed!" >> $GITHUB_STEP_SUMMARY
+            echo "❌ ML API still unhealthy after restart"
+            FAIL=1
           fi
 
           if [ "$BACKEND_STATUS" = "200" ]; then
             echo "✅ Backend API recovered (HTTP $BACKEND_STATUS)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Backend API still unhealthy (HTTP $BACKEND_STATUS) - Manual intervention required!" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Backend API recovered"
+          elif [ "$BACKEND_WAS_RESTARTED" = "true" ]; then
+            echo "❌ Backend API still unhealthy (HTTP $BACKEND_STATUS) after restart — manual intervention needed!" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Backend API still unhealthy after restart"
+            FAIL=1
           fi
+
+          exit $FAIL
