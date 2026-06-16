@@ -13,14 +13,16 @@
  * caps the live endpoints at 60s.
  */
 
-const SHORT_TTL = 60;     // seconds — live / time-sensitive endpoints
+const LIVE_TTL = 20;      // seconds — in-play live scores (needs to feel live)
+const SHORT_TTL = 60;     // seconds — other time-sensitive endpoints
 const DEFAULT_TTL = 900;  // seconds — everything else (static-ish data)
 
-// Endpoints whose freshness matters within ~a minute. Matched as path prefixes.
+// In-play endpoints: refresh fast so goals/minutes aren't stale.
+const LIVE_TTL_PREFIXES = ['/api/live'];
+// Time-sensitive but not live-by-the-second. Matched as path prefixes.
 const SHORT_TTL_PREFIXES = [
     '/api/fixtures/today',
     '/api/match-of-the-day',
-    '/api/live',
     '/api/results',
 ];
 
@@ -29,6 +31,9 @@ function isHealthPath(pathname) {
 }
 
 function cacheTtlForPath(pathname) {
+    for (const prefix of LIVE_TTL_PREFIXES) {
+        if (pathname === prefix || pathname.startsWith(prefix)) return LIVE_TTL;
+    }
     for (const prefix of SHORT_TTL_PREFIXES) {
         if (pathname === prefix || pathname.startsWith(prefix)) return SHORT_TTL;
     }
@@ -102,12 +107,13 @@ export default {
                     response = new Response(response.body, response);
 
                     const ttl = cacheTtlForPath(url.pathname);
-                    const isShort = ttl === SHORT_TTL;
+                    const enforce = ttl !== DEFAULT_TTL;
 
-                    // Enforce the short TTL on live endpoints (so they can never
-                    // inherit a long cache); for everything else keep the existing
-                    // behaviour of only setting a default when the origin sent none.
-                    if (isShort || !response.headers.has('Cache-Control')) {
+                    // Enforce the short TTL on time-sensitive/live endpoints (so they
+                    // can never inherit a long cache); for everything else keep the
+                    // existing behaviour of only setting a default when the origin
+                    // sent none.
+                    if (enforce || !response.headers.has('Cache-Control')) {
                         response.headers.set('Cache-Control', `public, max-age=${ttl}, s-maxage=${ttl}`);
                     }
 

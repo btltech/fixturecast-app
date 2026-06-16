@@ -8,6 +8,10 @@
   import SharePrediction from "../components/SharePrediction.svelte";
   import { getLeagueSeason } from "../services/season.js";
   import { FEATURED_LEAGUE_IDS } from "../services/leagues.js";
+  import {
+    liveWinProbabilities,
+    leadingOutcome,
+  } from "../services/liveWinProbability.js";
   import { _ } from "svelte-i18n";
 
   let liveMatches = [];
@@ -220,16 +224,33 @@
     return { winner: "draw", prob: drawProb, label: "Draw" };
   }
 
-  // Check if prediction matches current score trend
-  function isPredictionMatching(pred, homeGoals, awayGoals) {
-    if (!pred) return null;
-    const summary = getPredictionSummary(pred);
-    if (!summary) return null;
+  // Count red cards (including second yellows) for one team from the event feed.
+  function countRedCards(events, teamId) {
+    if (!events || teamId == null) return 0;
+    return events.filter(
+      (e) =>
+        e.team?.id === teamId &&
+        e.type === "Card" &&
+        (e.detail === "Red Card" || e.detail === "Second Yellow card"),
+    ).length;
+  }
 
-    if (summary.winner === "home" && homeGoals > awayGoals) return true;
-    if (summary.winner === "away" && awayGoals > homeGoals) return true;
-    if (summary.winner === "draw" && homeGoals === awayGoals) return true;
-    return false;
+  // Live (in-play) win probability for a match, derived from its pre-match
+  // prediction + current score + minutes remaining. Pure math, no network.
+  function getLiveSummary(pred, match) {
+    if (!pred) return null;
+    const st = match.fixture?.status || {};
+    const res = liveWinProbabilities({
+      prediction: pred,
+      homeGoals: match.goals?.home ?? 0,
+      awayGoals: match.goals?.away ?? 0,
+      elapsed: st.elapsed ?? 0,
+      statusShort: st.short ?? "",
+      homeRed: countRedCards(match.events, match.teams?.home?.id),
+      awayRed: countRedCards(match.events, match.teams?.away?.id),
+    });
+    if (!res) return null;
+    return { ...res, lead: leadingOutcome(res) };
   }
 
   function toggleStats(fixtureId) {
@@ -468,11 +489,7 @@
                 {@const predSummary = getPredictionSummary(pred)}
                 {@const homeGoals = match.goals?.home ?? 0}
                 {@const awayGoals = match.goals?.away ?? 0}
-                {@const predMatching = isPredictionMatching(
-                  pred,
-                  homeGoals,
-                  awayGoals,
-                )}
+                {@const liveSummary = getLiveSummary(pred, match)}
                 {@const stats = match.statistics}
                 {@const events = match.events || []}
 
@@ -508,21 +525,36 @@
                       </div>
                     </div>
 
-                    <!-- Prediction Badge & Share -->
+                    <!-- Prediction: pre-match call + live (in-play) probability -->
                     {#if predSummary}
                       <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-xs text-slate-400">{$_('live.predicted')}</span>
+                        <!-- Pre-match call — the accountability anchor -->
                         <span
-                          class="px-2 py-1 rounded text-xs font-bold {predMatching ===
-                          true
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                            : predMatching === false
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}"
+                          class="px-2 py-1 rounded text-xs bg-slate-500/15 text-slate-300 border border-slate-500/20"
+                          title="Our prediction before kick-off"
                         >
+                          <span class="text-slate-500"
+                            >{$_("live.preMatch", { default: "Pre-match" })}:</span
+                          >
                           {predSummary.label}
                           {predSummary.prob.toFixed(0)}%
                         </span>
+                        <!-- Live in-play probability — recomputed each refresh -->
+                        {#if liveSummary?.lead}
+                          <span
+                            class="px-2 py-1 rounded text-xs font-bold {liveSummary
+                              .lead.winner === predSummary.winner
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                              : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'}"
+                            title="Live win probability, updated from the current score and time remaining"
+                          >
+                            <span class="opacity-70"
+                              >{$_("live.live", { default: "Live" })}:</span
+                            >
+                            {liveSummary.lead.label}
+                            {liveSummary.lead.prob.toFixed(0)}%
+                          </span>
+                        {/if}
                         {#if pred?.data_quality === "limited"}
                           <span
                             class="px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400 border border-orange-500/30"
