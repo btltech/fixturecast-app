@@ -1,16 +1,45 @@
 /**
  * FixtureCast API Cache Worker
- * 
- * This worker acts as a reverse proxy in front of the Railway backend.
- * It intercepts requests and serves them from Cloudflare's Edge Cache if available.
- * If the cache misses, it fetches from Railway, caches the response, and returns it.
+ *
+ * Reverse proxy in front of the Railway backend, serving from Cloudflare's Edge
+ * Cache when possible. Cache policy is PATH-AWARE so time-sensitive endpoints
+ * stay fresh:
+ *   - /health*                    → never cached (always live), no-store
+ *   - live / time-sensitive paths → short TTL (60s), enforced
+ *   - everything else             → default TTL (15 min)
+ *
+ * Previously every GET was cached for 15 minutes, which let health checks and
+ * "today's fixtures" read up to 15 min stale. This version bypasses health and
+ * caps the live endpoints at 60s.
  */
+
+const SHORT_TTL = 60;     // seconds — live / time-sensitive endpoints
+const DEFAULT_TTL = 900;  // seconds — everything else (static-ish data)
+
+// Endpoints whose freshness matters within ~a minute. Matched as path prefixes.
+const SHORT_TTL_PREFIXES = [
+    '/api/fixtures/today',
+    '/api/match-of-the-day',
+    '/api/live',
+    '/api/results',
+];
+
+function isHealthPath(pathname) {
+    return pathname === '/health' || pathname.startsWith('/health/');
+}
+
+function cacheTtlForPath(pathname) {
+    for (const prefix of SHORT_TTL_PREFIXES) {
+        if (pathname === prefix || pathname.startsWith(prefix)) return SHORT_TTL;
+    }
+    return DEFAULT_TTL;
+}
 
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
 
-        // Determine which Railway backend to route to based on the subdomain or path
+        // Determine which Railway backend to route to based on the subdomain.
         let targetDomain;
         if (url.hostname.startsWith('ml.')) {
             targetDomain = 'ml-api-production-6cfc.up.railway.app';
@@ -18,17 +47,38 @@ export default {
             targetDomain = 'backend-api-production-7b7d.up.railway.app';
         }
 
-        // Rewrite the URL to point to Railway
+        // Rewrite the URL to point to Railway.
         const targetUrl = new URL(request.url);
         targetUrl.hostname = targetDomain;
         targetUrl.protocol = 'https:';
 
-        // Create a new request based on the original, but pointing to Railway
         const proxyRequest = new Request(targetUrl, request);
 
-        // If it's not a GET request, don't cache it, just proxy it directly
-        if (request.method !== 'GET') {
-            return fetch(proxyRequest);
+        // Never cache non-GET requests or health checks — always hit the origin
+        // so liveness/readiness and write operations are never served stale.
+        const bypassCache = request.method !== 'GET' || isHealthPath(url.pathname);
+
+        if (bypassCache) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const resp = await fetch(new Request(proxyRequest, { signal: controller.signal }));
+                clearTimeout(timeoutId);
+
+                // Make sure health responses are not stored by any downstream cache.
+                if (isHealthPath(url.pathname)) {
+                    const fresh = new Response(resp.body, resp);
+                    fresh.headers.set('Cache-Control', 'no-store, max-age=0');
+                    return fresh;
+                }
+                return resp;
+            } catch (error) {
+                const isTimeout = error.name === 'AbortError';
+                return new Response(JSON.stringify({ error: isTimeout ? 'Origin timeout' : 'Origin Server Error', details: error.message }), {
+                    status: isTimeout ? 504 : 502,
+                    headers: { 'Content-Type': 'application/json', 'Retry-After': '10' }
+                });
+            }
         }
 
         // Cloudflare Edge Cache API
@@ -38,27 +88,37 @@ export default {
         let response = await cache.match(request);
 
         if (!response) {
-            // Cache miss: fetch from Railway
+            // Cache miss: fetch from Railway with a hard 10s timeout so the
+            // worker never hangs for the full 15s when Railway is down.
             try {
-                response = await fetch(proxyRequest);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                response = await fetch(new Request(proxyRequest, { signal: controller.signal }));
+                clearTimeout(timeoutId);
 
                 // Only cache successful requests
                 if (response.status === 200) {
                     // Clone the response so we can both cache it and return it
                     response = new Response(response.body, response);
 
-                    // Ensure Cloudflare caches it for 15 minutes at the edge if no header exists
-                    if (!response.headers.has('Cache-Control')) {
-                        response.headers.set('Cache-Control', 'public, max-age=900, s-maxage=900');
+                    const ttl = cacheTtlForPath(url.pathname);
+                    const isShort = ttl === SHORT_TTL;
+
+                    // Enforce the short TTL on live endpoints (so they can never
+                    // inherit a long cache); for everything else keep the existing
+                    // behaviour of only setting a default when the origin sent none.
+                    if (isShort || !response.headers.has('Cache-Control')) {
+                        response.headers.set('Cache-Control', `public, max-age=${ttl}, s-maxage=${ttl}`);
                     }
 
                     // Store the response in the Edge Cache asynchronously
                     ctx.waitUntil(cache.put(request, response.clone()));
                 }
             } catch (error) {
-                return new Response(JSON.stringify({ error: 'Origin Server Error', details: error.message }), {
-                    status: 502,
-                    headers: { 'Content-Type': 'application/json' }
+                const isTimeout = error.name === 'AbortError';
+                return new Response(JSON.stringify({ error: isTimeout ? 'Origin timeout — backend may be restarting, try again in 30s' : 'Origin Server Error', details: error.message }), {
+                    status: isTimeout ? 504 : 502,
+                    headers: { 'Content-Type': 'application/json', 'Retry-After': '30' }
                 });
             }
         }
