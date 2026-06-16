@@ -1,9 +1,33 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import { resolve } from "path";
+
+// Stamps a unique build id into dist/sw.js so the service worker CACHE_NAME
+// changes on every deploy, forcing clients to purge stale cached assets.
+// Without this the cache token had to be bumped by hand and went stale, which
+// left returning visitors stuck on an old app bundle after deploys.
+function swCacheBust() {
+  return {
+    name: "sw-cache-bust",
+    apply: "build",
+    closeBundle() {
+      const swPath = resolve(process.cwd(), "dist/sw.js");
+      if (!existsSync(swPath)) return;
+      const buildId = new Date()
+        .toISOString()
+        .replace(/[^0-9]/g, "")
+        .slice(0, 14); // YYYYMMDDHHMMSS
+      const src = readFileSync(swPath, "utf8").replace(/__BUILD_ID__/g, buildId);
+      writeFileSync(swPath, src);
+      console.log(`[sw-cache-bust] stamped dist/sw.js with build id ${buildId}`);
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte(), swCacheBust()],
   server: {
     host: "0.0.0.0",
     port: 5173,

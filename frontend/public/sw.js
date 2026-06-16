@@ -1,6 +1,9 @@
 // FixtureCast Service Worker for PWA
-// Cache name includes build timestamp — update on each deploy.
-const CACHE_NAME = "fixturecast-v7-" + "20260226b";
+// Cache name includes a per-build id. The "__BUILD_ID__" placeholder is replaced
+// at build time by the sw-cache-bust plugin in vite.config.js, so every deploy
+// produces a new CACHE_NAME and the activate handler purges stale assets.
+// (In dev the placeholder stays literal, which is harmless.)
+const CACHE_NAME = "fixturecast-v7-" + "__BUILD_ID__";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
