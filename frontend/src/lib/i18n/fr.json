@@ -21,7 +21,10 @@
     "history": "Historique",
     "about": "A propos",
     "terms": "Conditions",
-    "privacy": "Confidentialite"
+    "privacy": "Confidentialite",
+    "accuracy": "Precision",
+    "howItWorks": "Comment ca marche",
+    "accaBuilder": "Combiné"
   },
   "home": {
     "hero": {
@@ -40,7 +43,7 @@
       "leaguesDesc": "Premier League, La Liga, Serie A, Bundesliga, Ligue 1"
     },
     "todaysFixtures": "Matchs du jour",
-    "viewAIModels": "Voir les modeles IA",
+    "viewAIModels": "Voir les predictions du jour",
     "noMatchesDesc": "Revenez demain pour de nouvelles predictions !",
     "upcomingHeading": "À venir",
     "upcomingTomorrow": "Pas de matchs aujourd'hui — voici le programme de demain :",
@@ -58,7 +61,7 @@
     "loading": "Chargement des matchs...",
     "selectLeague": "Selectionner un championnat",
     "allLeagues": "Tous les championnats",
-    "matchesAcrossLeagues": "{count} matchs dans {count} championnats",
+    "matchesAcrossLeagues": "{matchCount} matchs dans {leagueCount} championnats",
     "allUpcoming": "Tous a venir",
     "filterByDate": "Filtrer par date",
     "matchTime": "Heure du match",
@@ -93,7 +96,7 @@
     "tryDifferentDate": "Essayez une autre date ou affichez tous les matchs.",
     "noScheduledFixtures": "Aucun match de {league} n'est programme prochainement.",
     "tryDifferentLeague": "Essayez un autre championnat ou revenez plus tard.",
-    "europeanComps": "EUROPE",
+    "europeanComps": "Coupes & Internationaux",
     "topLeagues": "TOP CHAMPIONNATS",
     "champLeagues": "DEUXIEME DIVISION",
     "domesticCups": "COUPES NATIONALES",
@@ -172,7 +175,7 @@
     "relegation": "Relegation",
     "leagueStandings": "Classement du championnat",
     "loading": "Chargement du classement...",
-    "europeanComps": "Compétitions européennes",
+    "europeanComps": "Coupes & Internationaux",
     "topLeagues": "Principaux championnats",
     "moreLeagues": "Davantage de championnats",
     "domesticCups": "Coupes nationales",
@@ -270,8 +273,8 @@
   },
   "mlPredictions": {
     "title": "Predictions IA des matchs",
-    "subtitle": "Predictions pour les championnats elites d'Europe et les competitions de l'UEFA.",
-    "europeanCompetitions": "Competitions europeennes",
+    "subtitle": "Predictions IA pour la Coupe du Monde, les grands championnats et competitions.",
+    "europeanCompetitions": "Coupes & Internationaux",
     "topLeagues": "Championnats majeurs",
     "secondDivision": "Deuxieme division",
     "friendlies": "Matchs amicaux",
@@ -380,8 +383,8 @@
     "browseUpcoming": "Voir les prochains matchs",
     "matchOfTheDay": "Match du jour",
     "viewAnalysis": "Voir l'analyse IA",
-    "matchesPlayingToday": "{count} matchs aujourd'hui",
-    "leagueCount": "{count} championnats",
+    "matchesPlayingToday": "{count, plural, one {# match aujourd'hui} other {# matchs aujourd'hui}}",
+    "leagueCount": "{count, plural, one {# championnat} other {# championnats}}",
     "matchCount": "{count} matchs"
   },
   "share": {
@@ -453,7 +456,8 @@
   "searchBar": {
     "placeholder": "Rechercher des equipes ou des matchs...",
     "teamsSection": "EQUIPES",
-    "fixturesSection": "MATCHS"
+    "fixturesSection": "MATCHS",
+    "leaguesSection": "Championnats"
   },
   "compare": {
     "button": "Comparer ({count})",
@@ -510,10 +514,10 @@
     "firstTip": "Conseil : revenez demain matin pour vos premiers accumulateurs generes par IA !",
     "noMatchesTodayTitle": "Aucun match aujourd'hui",
     "noMatchesTodayDesc": "Aucun match n'est programme aujourd'hui dans les championnats pris en charge.",
-    "qualityCheckFailed": "Controle qualite non valide",
+    "qualityCheckFailed": "Aucun accumulateur aujourd'hui",
     "qualityCheckDesc": "{count} matchs sont programmes aujourd'hui, mais les predictions n'atteignent pas nos seuils minimums de confiance.",
     "whyNoAccas": "Pourquoi aucun accumulateur ?",
-    "highConfidenceFound": "Nous avons trouve {count} predictions a haute confiance (8+ requises)",
+    "highConfidenceFound": "Predictions qualifiees aujourd'hui : {count} (8+ requis pour un accumulateur)",
     "limitedData": "La Conference League et les petits championnats ont souvent des donnees limitees",
     "confidenceThreshold": "Nous generons uniquement des accumulateurs avec des predictions entre 60% et 85% de confiance",
     "protectsYou": "Cela vous protege des paris de faible qualite",
@@ -738,5 +742,11 @@
     "loading": "Chargement des métriques...",
     "warning": "Avertissement",
     "errorPrefix": "Erreur :"
+  },
+  "leagueGroups": {
+    "cupsInternationals": "Coupes & Internationaux",
+    "topLeagues": "Grands championnats",
+    "moreLeagues": "Autres championnats",
+    "domesticCups": "Coupes nationales"
   }
 }

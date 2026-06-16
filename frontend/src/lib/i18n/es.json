@@ -21,7 +21,10 @@
     "history": "Historial",
     "about": "Acerca de",
     "terms": "Términos",
-    "privacy": "Privacidad"
+    "privacy": "Privacidad",
+    "accuracy": "Precision",
+    "howItWorks": "Como funciona",
+    "accaBuilder": "Combinada"
   },
   "home": {
     "hero": {
@@ -40,7 +43,7 @@
       "leaguesDesc": "Premier League, La Liga, Serie A, Bundesliga, Ligue 1"
     },
     "todaysFixtures": "Partidos de Hoy",
-    "viewAIModels": "Ver Modelos IA",
+    "viewAIModels": "Ver las predicciones de hoy",
     "noMatchesDesc": "Vuelve mañana para ver nuevas predicciones.",
     "upcomingHeading": "Próximos partidos",
     "upcomingTomorrow": "Sin partidos hoy — aquí están los de mañana:",
@@ -58,7 +61,7 @@
     "loading": "Cargando partidos...",
     "selectLeague": "Seleccionar Liga",
     "allLeagues": "Todas las Ligas",
-    "matchesAcrossLeagues": "{count} partidos en {count} ligas",
+    "matchesAcrossLeagues": "{matchCount} partidos en {leagueCount} ligas",
     "allUpcoming": "Todos los Próximos",
     "filterByDate": "Filtrar por Fecha",
     "matchTime": "Hora del Partido",
@@ -93,7 +96,7 @@
     "tryDifferentDate": "Intenta seleccionar otra fecha o ver todos los partidos.",
     "noScheduledFixtures": "No hay partidos de {league} programados.",
     "tryDifferentLeague": "¡Intenta seleccionar otra liga o vuelve más tarde!",
-    "europeanComps": "EUROPEOS",
+    "europeanComps": "Copas e Internacionales",
     "topLeagues": "LIGAS TOP",
     "champLeagues": "SEGUNDA DIVISIÓN",
     "domesticCups": "COPAS NACIONALES",
@@ -172,7 +175,7 @@
     "relegation": "Descenso",
     "leagueStandings": "Clasificación de la liga",
     "loading": "Cargando clasificación...",
-    "europeanComps": "Competiciones europeas",
+    "europeanComps": "Copas e Internacionales",
     "topLeagues": "Principales ligas",
     "moreLeagues": "Más ligas",
     "domesticCups": "Copas nacionales",
@@ -270,8 +273,8 @@
   },
   "mlPredictions": {
     "title": "Predicciones IA de partidos",
-    "subtitle": "Predicciones para las ligas de elite de Europa y las competiciones de la UEFA.",
-    "europeanCompetitions": "Competiciones europeas",
+    "subtitle": "Predicciones de IA para el Mundial, las grandes ligas y competiciones.",
+    "europeanCompetitions": "Copas e Internacionales",
     "topLeagues": "Ligas top",
     "secondDivision": "Segunda division",
     "friendlies": "Amistosos",
@@ -380,8 +383,8 @@
     "browseUpcoming": "Ver próximos partidos",
     "matchOfTheDay": "Partido del día",
     "viewAnalysis": "Ver análisis de IA",
-    "matchesPlayingToday": "{count} partidos hoy",
-    "leagueCount": "{count} ligas",
+    "matchesPlayingToday": "{count, plural, one {# partido hoy} other {# partidos hoy}}",
+    "leagueCount": "{count, plural, one {# liga} other {# ligas}}",
     "matchCount": "{count} partidos"
   },
   "share": {
@@ -453,7 +456,8 @@
   "searchBar": {
     "placeholder": "Buscar equipos o partidos...",
     "teamsSection": "EQUIPOS",
-    "fixturesSection": "PARTIDOS"
+    "fixturesSection": "PARTIDOS",
+    "leaguesSection": "Ligas"
   },
   "compare": {
     "button": "Comparar ({count})",
@@ -510,10 +514,10 @@
     "firstTip": "Consejo: vuelve mañana por la mañana para ver tus primeras combinadas generadas por IA.",
     "noMatchesTodayTitle": "No hay partidos hoy",
     "noMatchesTodayDesc": "No hay partidos programados hoy en todas las ligas compatibles.",
-    "qualityCheckFailed": "No superó el control de calidad",
+    "qualityCheckFailed": "Sin acumuladores hoy",
     "qualityCheckDesc": "Hay {count} partidos programados hoy, pero las predicciones no alcanzan nuestros umbrales mínimos de confianza.",
     "whyNoAccas": "¿Por qué no hay acumuladores?",
-    "highConfidenceFound": "Encontramos {count} predicciones de alta confianza (se necesitan 8+)",
+    "highConfidenceFound": "Predicciones que califican hoy: {count} (se necesitan 8+ para un acumulador)",
     "limitedData": "La Conference League y las ligas pequeñas suelen tener datos limitados",
     "confidenceThreshold": "Solo generamos acumuladores con predicciones entre 60% y 85% de confianza",
     "protectsYou": "Esto te protege de apuestas de baja calidad",
@@ -738,5 +742,11 @@
     "loading": "Cargando métricas...",
     "warning": "Advertencia",
     "errorPrefix": "Error:"
+  },
+  "leagueGroups": {
+    "cupsInternationals": "Copas e Internacionales",
+    "topLeagues": "Grandes ligas",
+    "moreLeagues": "Mas ligas",
+    "domesticCups": "Copas nacionales"
   }
 }

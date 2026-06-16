@@ -41,7 +41,7 @@
 
   <div class="glass-card p-8 element-enter stagger-2">
     <h1 class="text-3xl font-bold text-white mb-2">Cookie Policy</h1>
-    <p class="text-slate-400 mb-8">Last updated: November 2025</p>
+    <p class="text-slate-400 mb-8">Last updated: June 2026</p>
 
     <div class="prose prose-invert max-w-none space-y-6 text-slate-300">
       <section>
@@ -202,8 +202,8 @@
       <section>
         <h2 class="text-xl font-semibold text-white mb-3">7. Contact</h2>
         <p>
-          For questions about our use of cookies, please contact
-          support@fixturecast.com.
+          For questions about our use of cookies, please contact us at
+          <a href="https://x.com/fixturecast" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">@fixturecast</a> on X (Twitter).
         </p>
       </section>
     </div>

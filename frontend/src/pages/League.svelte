@@ -7,6 +7,7 @@
   import { API_URL } from "../config.js";
   import { getLeagueSeason } from "../services/season.js";
   import { getLeague } from "../services/leagues.js";
+  import { getLeagueLandingContent } from "../services/leagueLandingContent.js";
   import { formatDate } from "../lib/i18n/format.js";
 
   export let id;
@@ -14,6 +15,7 @@
   const leagueId = parseInt(id, 10);
   const league   = getLeague(leagueId);
   const season   = getLeagueSeason(leagueId);
+  const landingContent = getLeagueLandingContent(league);
 
   $: seoData = league ? generateLeagueSEO(league) : null;
 
@@ -65,7 +67,7 @@
     <p class="text-5xl mb-4">⚽</p>
     <p class="text-xl font-semibold text-white mb-2">{$_("leaguePage.notFound")}</p>
     <p class="mb-6">{$_("leaguePage.notFoundDesc", { values: { id } })}</p>
-    <Link to="/predictions" class="text-accent hover:underline">{$_("leaguePage.browseAll")} →</Link>
+    <Link to="/ai" class="text-accent hover:underline">{$_("leaguePage.browseAll")} →</Link>
   </div>
 {:else}
   {@const badge = TIER_BADGE[league.tier] ?? TIER_BADGE[1]}
@@ -115,6 +117,25 @@
       <span class="text-sm font-medium text-white">{$_("nav.results")}</span>
     </Link>
   </div>
+
+  <section class="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:p-6">
+    <h2 class="text-lg font-semibold text-white mb-3">{landingContent.coverageHeading}</h2>
+    <div class="space-y-3 text-sm leading-7 text-slate-300">
+      {#each landingContent.intro as paragraph}
+        <p>{paragraph}</p>
+      {/each}
+    </div>
+
+    {#if landingContent.highlights.length > 0}
+      <div class="mt-4 grid gap-3 md:grid-cols-3">
+        {#each landingContent.highlights as item}
+          <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
+            {item}
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </section>
 
   <!-- Upcoming fixtures -->
   <section>

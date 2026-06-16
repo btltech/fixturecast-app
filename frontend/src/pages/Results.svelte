@@ -8,6 +8,7 @@
   import { getLeagueSeason } from "../services/season.js";
   import { getSavedLeague, saveLeague } from "../services/preferences.js";
   import { LEAGUES } from "../services/leagues.js";
+  import { getLeagueGroups } from "../services/leagueGroups.js";
   import { formatDate } from "../lib/i18n/format.js";
 
   let seoData;
@@ -23,10 +24,8 @@
 
   const leagueOptions = LEAGUES.map((l) => ({ ...l, flag: l.emoji }));
 
-  $: europeanLeagues = leagueOptions.filter((l) => l.tier === 0);
-  $: topLeagues = leagueOptions.filter((l) => l.tier === 1);
-  $: secondDivisions = leagueOptions.filter((l) => l.tier === 2);
-  $: cups = leagueOptions.filter((l) => l.tier === 3);
+  // One canonical, ordered grouping for the selector (shared with other pages).
+  const leagueGroups = getLeagueGroups(leagueOptions);
 
   async function fetchResults() {
     loading = true;
@@ -64,85 +63,25 @@
     <h1 class="text-3xl font-bold mb-4">{$_("results.recentResults")}</h1>
 
     <div class="space-y-4">
-      <!-- European Competitions -->
-      <div>
-        <div class="text-xs text-slate-400 mb-2 font-bold">🏆 {$_("fixtures.europeanComps")}</div>
-        <div class="flex flex-wrap gap-2">
-          {#each europeanLeagues as league}
-            <button
-              on:click={() => changeLeague(league.id)}
-              class="px-3 py-1.5 rounded-lg text-sm btn-interact {selectedLeague ===
-              league.id
-                ? 'bg-yellow-500/80 text-black font-medium'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
+      <!-- League groups (shared canonical grouping — see services/leagueGroups.js) -->
+      {#each leagueGroups as group}
+        <div>
+          <div class="text-xs text-slate-400 mb-2 font-bold">{group.emoji} {$_(group.labelKey)}</div>
+          <div class="flex flex-wrap gap-2">
+            {#each group.leagues as league}
+              <button
+                on:click={() => changeLeague(league.id)}
+                class="px-3 py-1.5 rounded-lg text-sm btn-interact {selectedLeague === league.id
+                  ? 'bg-accent text-white'
+                  : 'bg-white/5 hover:bg-white/10'}"
+              >
+                <span class="mr-1">{league.emoji}</span>
+                {league.name}
+              </button>
+            {/each}
+          </div>
         </div>
-      </div>
-
-      <!-- Top Leagues -->
-      <div>
-        <div class="text-xs text-slate-400 mb-2 font-bold">🌍 {$_("fixtures.topLeagues")}</div>
-        <div class="flex flex-wrap gap-2">
-          {#each topLeagues as league}
-            <button
-              on:click={() => changeLeague(league.id)}
-              class="px-3 py-1.5 rounded-lg text-sm btn-interact {selectedLeague ===
-              league.id
-                ? 'bg-accent text-white'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- More Leagues -->
-      <div>
-        <div class="text-xs text-slate-400 mb-2 font-bold">
-          📋 {$_("results.moreLeagues")}
-        </div>
-        <div class="flex flex-wrap gap-2">
-          {#each secondDivisions as league}
-            <button
-              on:click={() => changeLeague(league.id)}
-              class="px-3 py-1.5 rounded-lg text-sm btn-interact {selectedLeague ===
-              league.id
-                ? 'bg-accent text-white'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Domestic Cups -->
-      <div>
-        <div class="text-xs text-slate-400 mb-2 font-bold">
-          🏆 {$_("fixtures.domesticCups")}
-        </div>
-        <div class="flex flex-wrap gap-2">
-          {#each cups as league}
-            <button
-              on:click={() => changeLeague(league.id)}
-              class="px-3 py-1.5 rounded-lg text-sm btn-interact {selectedLeague ===
-              league.id
-                ? 'bg-orange-500/80 text-white'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
-        </div>
-      </div>
+      {/each}
     </div>
   </div>
 

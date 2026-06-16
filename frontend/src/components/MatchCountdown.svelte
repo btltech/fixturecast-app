@@ -15,10 +15,31 @@
     return get(_)(key, values ? { values } : undefined);
   }
 
+  // A finished match must never show "LIVE NOW". Prefer the real fixture status;
+  // otherwise treat the game as live only within a plausible window after kickoff.
+  const LIVE_STATUSES = ["1H", "2H", "HT", "ET", "BT", "P", "LIVE", "INT"];
+  const FINISHED_STATUSES = ["FT", "AET", "PEN", "ABD", "AWD", "WO", "CANC", "PST", "SUSP"];
+  const MATCH_WINDOW_MS = 150 * 60 * 1000; // ~2.5h: 90' + half-time + stoppage/ET
+
   function formatCountdown(ms) {
-    if (ms <= 0) {
+    const st = matchData?.fixture?.status?.short || null;
+    if (st && FINISHED_STATUSES.includes(st)) {
+      isLive = false;
+      return ""; // render nothing for a finished match
+    }
+    if (st && LIVE_STATUSES.includes(st)) {
       isLive = true;
       return t("matchCountdown.liveNow");
+    }
+    if (ms <= 0) {
+      // Kickoff has passed but there's no live status — only call it live within the
+      // plausible match window; after that the game is over.
+      if (ms > -MATCH_WINDOW_MS) {
+        isLive = true;
+        return t("matchCountdown.liveNow");
+      }
+      isLive = false;
+      return "";
     }
 
     const hours = Math.floor(ms / (1000 * 60 * 60));

@@ -5,6 +5,7 @@
   import { API_URL } from "../config.js";
   import { getLeagueSeason } from "../services/season.js";
   import { formatDate } from "../lib/i18n/format.js";
+  import { LEAGUES } from "../services/leagues.js";
 
   export let searchQuery = "";
   export let selectedLeague = null; // null = global search mode (Navbar); set to a league ID for scoped search
@@ -13,6 +14,7 @@
   let filteredTeams = [];
   let fixtures = [];
   let filteredFixtures = [];
+  let filteredLeagues = []; // global mode: matching leagues/competitions (client-side, instant)
   let showResults = false;
   let loading = false;
   let currentLeague = selectedLeague;
@@ -88,9 +90,15 @@
       return;
     }
 
-    // Global search (Navbar) — debounce then hit the search API
+    // Global search (Navbar) — leagues match instantly (client-side), teams via API.
     showResults = true;
     filteredFixtures = [];
+    const q = searchQuery.trim().toLowerCase();
+    filteredLeagues = LEAGUES.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        (l.country || "").toLowerCase().includes(q)
+    ).slice(0, 5);
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(async () => {
       if (!searchQuery.trim()) return;
@@ -106,6 +114,7 @@
     showResults = false;
     filteredTeams = [];
     filteredFixtures = [];
+    filteredLeagues = [];
   }
 </script>
 
@@ -138,9 +147,31 @@
     >
       {#if loading}
         <div class="p-4 text-center text-slate-400">{$_('teams.loading')}</div>
-      {:else if filteredTeams.length === 0 && filteredFixtures.length === 0}
+      {:else if filteredTeams.length === 0 && filteredFixtures.length === 0 && filteredLeagues.length === 0}
         <div class="p-4 text-center text-slate-400">{$_('teams.noTeams')}</div>
       {:else}
+        <!-- Leagues (global mode) -->
+        {#if !selectedLeague && filteredLeagues.length > 0}
+          <div class="p-2 border-b border-white/10">
+            <div class="text-xs text-slate-400 px-2 py-1 font-bold">{$_('searchBar.leaguesSection', { default: 'Leagues' })}</div>
+            {#each filteredLeagues as lg}
+              <Link
+                to="/league/{lg.id}"
+                on:click={clearSearch}
+                class="flex items-center gap-3 px-3 py-2 hover:bg-white/10 rounded-lg search-item"
+              >
+                <span class="text-lg w-8 text-center">{lg.emoji}</span>
+                <div>
+                  <div class="font-medium">{lg.name}</div>
+                  {#if lg.country}
+                    <div class="text-xs text-slate-400">{lg.country}</div>
+                  {/if}
+                </div>
+              </Link>
+            {/each}
+          </div>
+        {/if}
+
         <!-- Teams -->
         {#if filteredTeams.length > 0}
           <div class="p-2 {selectedLeague ? 'border-b border-white/10' : ''}">

@@ -537,7 +537,7 @@
       <div class="glass-card mt-2 p-2 max-h-80 overflow-y-auto">
         <!-- European Competitions -->
         <div class="text-xs text-slate-400 px-2 py-1 font-bold">
-          EUROPEAN COMPETITIONS
+          CUPS & INTERNATIONALS
         </div>
         {#each leagues.filter((l) => l.tier === 0) as league}
           <button
@@ -652,7 +652,7 @@
             on:click={() => toggleTier(0)}
             class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-yellow-400 uppercase tracking-wider hover:bg-white/5 rounded-lg transition-colors"
           >
-            <span>European</span>
+            <span>Cups & Internationals</span>
             <svg
               class="w-4 h-4 transition-transform {collapsedTiers[0]
                 ? ''
@@ -850,9 +850,11 @@
               ⚽ {$_("fixtures.allLeagues")} - {formatDateNav(selectedDate)}
             </h2>
             <p class="text-sm text-slate-400">
-              {filteredFixtures.length}
               {$_("fixtures.matchesAcrossLeagues", {
-                values: { count: fixturesByLeague?.length || 0 },
+                values: {
+                  matchCount: filteredFixtures.length,
+                  leagueCount: fixturesByLeague?.length || 0,
+                },
               })}
             </p>
           {:else}

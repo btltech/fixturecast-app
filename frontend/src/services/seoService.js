@@ -447,10 +447,12 @@ export function generateStandingsSEO() {
  * Generate SEO for AI Predictions page
  */
 export function generateMLPredictionsSEO() {
+  // Canonical is /ai (the URL used across the nav and internal links). /predictions is
+  // an alias route that canonicals here, so Google consolidates the two into one page.
   return generatePageSEO(
     "AI Match Predictions",
     `AI-powered football predictions with win probabilities and predicted scores. Covering ${LEAGUES.length} competitions including Premier League, La Liga, Serie A, Bundesliga, Champions League, FIFA World Cup Qualifiers, Copa Libertadores and MLS.`,
-    "/predictions"
+    "/ai"
   );
 }
 

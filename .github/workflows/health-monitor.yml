@@ -27,14 +27,40 @@ jobs:
         run: |
           echo "🩺 Checking FixtureCast Services..."
 
-          # Check ML API (generous timeout: PyTorch+CatBoost boot takes 60-90s)
-          ML_STATUS=$(curl --max-time 90 --retry 3 --retry-delay 10 --retry-all-errors -s -o /dev/null -w "%{http_code}" "$ML_API_URL/health" || echo "000")
-          if [ "$ML_STATUS" = "200" ]; then
+          # --- ML API readiness (deep: confirms the meta-model stacker loaded) ---
+          # (generous timeout: PyTorch+CatBoost boot takes 60-90s)
+          READY_STATUS=$(curl --max-time 90 --retry 3 --retry-delay 10 --retry-all-errors -s -o /dev/null -w "%{http_code}" "$ML_API_URL/health/ready" || echo "000")
+          if [ "$READY_STATUS" = "404" ]; then
+            # readiness route not deployed yet — fall back to liveness /health
+            READY_STATUS=$(curl --max-time 90 --retry 3 --retry-delay 10 --retry-all-errors -s -o /dev/null -w "%{http_code}" "$ML_API_URL/health" || echo "000")
+            echo "ℹ️ /health/ready not found; fell back to /health (HTTP $READY_STATUS)"
+          else
+            META_LOADED=$(curl --max-time 90 -s "$ML_API_URL/health/ready" | jq -r '.meta_model_loaded // "unknown"' 2>/dev/null || echo "unknown")
+            echo "ML readiness: HTTP $READY_STATUS, meta_model_loaded=$META_LOADED"
+          fi
+
+          # --- Prediction sanity probe: a 200 /health can hide broken predictions ---
+          # (silent stacker fallback, degenerate lambdas, empty/5xx bodies, etc.)
+          PRED_OK=true
+          FIXTURE_ID=$(curl --max-time 30 -s "$BACKEND_API_URL/api/fixtures/today" | jq -r '.match_of_the_day.fixture.id // .response[0].fixture.id // empty' 2>/dev/null || echo "")
+          if [ -n "$FIXTURE_ID" ]; then
+            PRED_BODY=$(curl --max-time 90 --retry 2 --retry-delay 10 -s "$ML_API_URL/api/prediction/$FIXTURE_ID" || echo "")
+            if printf '%s' "$PRED_BODY" | jq -e '.prediction.combiner' >/dev/null 2>&1; then
+              echo "✅ Prediction serving OK (fixture $FIXTURE_ID, combiner=$(printf '%s' "$PRED_BODY" | jq -r '.prediction.combiner'))"
+            else
+              PRED_OK=false
+              echo "❌ Prediction probe FAILED for fixture $FIXTURE_ID (empty or malformed response)"
+            fi
+          else
+            echo "ℹ️ No fixtures today — skipping prediction probe"
+          fi
+
+          if [ "$READY_STATUS" = "200" ] && [ "$PRED_OK" = "true" ]; then
             echo "ml_healthy=true" >> $GITHUB_OUTPUT
-            echo "✅ ML API is healthy (HTTP $ML_STATUS)"
+            echo "✅ ML API is healthy & serving"
           else
             echo "ml_healthy=false" >> $GITHUB_OUTPUT
-            echo "❌ ML API is unhealthy (HTTP $ML_STATUS)"
+            echo "❌ ML API unhealthy (ready=$READY_STATUS, prediction_ok=$PRED_OK)"
           fi
 
           # Check Backend API

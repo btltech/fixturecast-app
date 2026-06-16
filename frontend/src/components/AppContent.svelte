@@ -27,6 +27,8 @@
   import DailyAccas from "../pages/DailyAccas.svelte";
   import SmartMarkets from "../pages/SmartMarkets.svelte";
   import League from "../pages/League.svelte";
+  import HowItWorks from "../pages/HowItWorks.svelte";
+  import AccaBuilder from "../pages/AccaBuilder.svelte";
   import NotFound from "../pages/NotFound.svelte";
 
   // Now useLocation works because we're inside Router context
@@ -64,6 +66,8 @@
         <Route path="/privacy" component={Privacy} />
         <Route path="/terms" component={Terms} />
         <Route path="/cookies" component={Cookies} />
+        <Route path="/how-it-works" component={HowItWorks} />
+        <Route path="/acca-builder" component={AccaBuilder} />
         <Route component={NotFound} />
       </main>
     </ErrorBoundary>

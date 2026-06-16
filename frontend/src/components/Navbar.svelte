@@ -118,6 +118,30 @@
         {$_("nav.home")}
       </Link>
 
+      <!-- Predictions (promoted to top level) -->
+      <Link
+        to="/ai"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all {isActive(
+          '/ai',
+        )
+          ? 'text-white bg-white/10'
+          : 'text-slate-400 hover:text-white hover:bg-white/5'}"
+      >
+        {$_("nav.predictions")}
+      </Link>
+
+      <!-- Accuracy / track record (promoted to top level for trust) -->
+      <Link
+        to="/models"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all {isActive(
+          '/models',
+        )
+          ? 'text-white bg-white/10'
+          : 'text-slate-400 hover:text-white hover:bg-white/5'}"
+      >
+        {$_("nav.accuracy")}
+      </Link>
+
       <!-- Matches Dropdown -->
       <div class="relative">
         <button
@@ -383,6 +407,42 @@
                 />
               </svg>
               {$_("nav.history")}
+            </Link>
+            <Link
+              to="/how-it-works"
+              on:click={closeDropdowns}
+              class="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors {isActive(
+                '/how-it-works',
+              )
+                ? 'text-white bg-white/5'
+                : 'text-slate-300'}"
+            >
+              <svg
+                class="w-4 h-4 text-cyan-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {$_("nav.howItWorks", { default: "How It Works" })}
+            </Link>
+            <Link
+              to="/acca-builder"
+              on:click={closeDropdowns}
+              class="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors {isActive(
+                '/acca-builder',
+              )
+                ? 'text-white bg-white/5'
+                : 'text-slate-300'}"
+            >
+              <span class="w-4 h-4 text-center text-base leading-none">🎲</span>
+              {$_("nav.accaBuilder", { default: "Acca Builder" })}
             </Link>
           </div>
         {/if}

@@ -62,7 +62,33 @@
 
         // Load upcoming fixtures from backend
         await loadUpcomingMatches();
+        // If the saved league has nothing on (e.g. off-season), fall back to a
+        // league that actually has matches today so the page is never empty.
+        await ensureLeagueWithFixtures();
     });
+
+    let triedFixtureFallback = false;
+    async function ensureLeagueWithFixtures() {
+        if (triedFixtureFallback || matches.length > 0) return;
+        triedFixtureFallback = true;
+        try {
+            const res = await fetch(`${BACKEND_API}/api/fixtures/today`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const list = (data && data.response) || [];
+            const upcoming = list.find(
+                (f) => ["NS", "TBD"].includes(f?.fixture?.status?.short),
+            ) || list[0];
+            const fallbackId = upcoming?.league?.id;
+            if (fallbackId && fallbackId !== league && leagues.some((l) => l.id === fallbackId)) {
+                league = fallbackId;
+                saveLeague(league);
+                await loadUpcomingMatches();
+            }
+        } catch (e) {
+            // best-effort only — keep the originally selected league
+        }
+    }
 
     async function checkMLApi() {
         try {

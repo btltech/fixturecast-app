@@ -1,6 +1,7 @@
 <script>
     import { Link } from "svelte-routing";
     import { _ } from "svelte-i18n";
+    import { accaSlip, addSelection, removeSelection, isInSlip } from "../services/accaStore.js";
 
     export let prediction;
     export let homeTeam;
@@ -8,6 +9,67 @@
     export let homeTeamId = null;
     export let awayTeamId = null;
     export let leagueId = 39;
+
+    // Markets / detail are grouped into tabs for scannability instead of one long grid.
+    let activeMarketTab = "goals";
+
+    // Most likely scorelines (from the Monte-Carlo/DC scoreline distribution already in
+    // the response). Top few by probability.
+    $: topScorelines = (() => {
+        const dist = prediction.scoreline_distribution || {};
+        const total = Object.values(dist).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+        return Object.entries(dist)
+            .map(([score, count]) => ({ score, pct: (Number(count) || 0) / total * 100 }))
+            .sort((a, b) => b.pct - a.pct)
+            .slice(0, 6);
+    })();
+
+    // How each model voted (transparency — the response includes a per-model breakdown).
+    const MODEL_LABELS = {
+        gbdt: "GBDT", catboost: "CatBoost", transformer: "Transformer", lstm: "LSTM",
+        gnn: "GNN", bayesian: "Bayesian", elo: "Elo", monte_carlo: "Monte Carlo",
+    };
+    $: modelBreakdown = Object.entries(prediction.model_breakdown || {})
+        .filter(([, v]) => v && typeof v.home_win === "number")
+        .map(([k, v]) => ({
+            key: k,
+            name: MODEL_LABELS[k] || k,
+            home: v.home_win * 100,
+            draw: v.draw * 100,
+            away: v.away_win * 100,
+        }));
+
+    $: marketTabs = [
+        { id: "goals", label: "Goals" },
+        { id: "half", label: "Half-time" },
+        { id: "handicap", label: "Handicap" },
+        ...(topScorelines.length ? [{ id: "scores", label: "Scorelines" }] : []),
+        ...(modelBreakdown.length ? [{ id: "models", label: "Models" }] : []),
+    ];
+
+    // Top 1X2 pick for the "Add to accumulator" action.
+    $: topPick = (() => {
+        const h = prediction.home_win_prob || 0;
+        const d = prediction.draw_prob || 0;
+        const a = prediction.away_win_prob || 0;
+        const o = (prediction.odds && prediction.odds["1x2"]) || {};
+        let label, prob, odds, key;
+        if (h >= d && h >= a) { label = `${homeTeam} to win`; prob = h; odds = o.home; key = "home"; }
+        else if (a >= d) { label = `${awayTeam} to win`; prob = a; odds = o.away; key = "away"; }
+        else { label = $_("prediction.draw"); prob = d; odds = o.draw; key = "draw"; }
+        return {
+            id: `${homeTeamId || "h"}-${awayTeamId || "a"}-${leagueId}-${key}`,
+            label,
+            prob,
+            odds: typeof odds === "number" && odds > 1 ? odds : null,
+            fixture: `${homeTeam} vs ${awayTeam}`,
+        };
+    })();
+    $: inSlip = isInSlip($accaSlip, topPick.id);
+    function toggleSlip() {
+        if (inSlip) removeSelection(topPick.id);
+        else addSelection(topPick);
+    }
 
     $: homeWinPct = (prediction.home_win_prob * 100).toFixed(1);
     $: drawPct = (prediction.draw_prob * 100).toFixed(1);
@@ -237,109 +299,156 @@
             </div>
         </div>
 
-        <!-- Additional Predictions -->
-        <div class="additional-predictions">
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('prediction.btts')}</span>
-                <span class="pill-value">{bttsPct}%</span>
-            </div>
+        {#if !prediction.abstain}
+            <button type="button" class="acca-add-btn {inSlip ? 'added' : ''}" on:click={toggleSlip}>
+                {inSlip ? "✓ Added to accumulator" : "+ Add to accumulator"}
+            </button>
+        {/if}
 
-            <!-- Over/Under 0.5 -->
-            {#if over05Pct !== null}
-                <div class="prediction-pill">
-                    <span class="pill-label">{$_('mlPrediction.over05', {default: 'Over 0.5 Goals'})}</span>
-                    <span class="pill-value">{over05Pct}%</span>
-                </div>
-                <div class="prediction-pill">
-                    <span class="pill-label">{$_('mlPrediction.under05', {default: 'Under 0.5 Goals'})}</span>
-                    <span class="pill-value">{under05Pct}%</span>
-                </div>
-            {/if}
-
-            <!-- Over/Under 1.5 -->
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('mlPrediction.over15')}</span>
-                <span class="pill-value">{over15Pct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('mlPrediction.under15')}</span>
-                <span class="pill-value">{under15Pct}%</span>
-            </div>
-
-            <!-- Over/Under 2.5 -->
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('prediction.over25')}</span>
-                <span class="pill-value">{over25Pct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('prediction.under25')}</span>
-                <span class="pill-value">{under25Pct}%</span>
-            </div>
-
-            <!-- Over/Under 3.5 -->
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('mlPrediction.over35')}</span>
-                <span class="pill-value">{over35Pct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('mlPrediction.under35')}</span>
-                <span class="pill-value">{under35Pct}%</span>
-            </div>
-
-            <!-- Over/Under 4.5 -->
-            {#if over45Pct !== null}
-                <div class="prediction-pill">
-                    <span class="pill-label">{$_('mlPrediction.over45', {default: 'Over 4.5 Goals'})}</span>
-                    <span class="pill-value">{over45Pct}%</span>
-                </div>
-                <div class="prediction-pill">
-                    <span class="pill-label">{$_('mlPrediction.under45', {default: 'Under 4.5 Goals'})}</span>
-                    <span class="pill-value">{under45Pct}%</span>
-                </div>
-            {/if}
-
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('mlPrediction.btts1stHalf')}</span>
-                <span class="pill-value">{btts1stHalfPct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('mlPrediction.btts2ndHalf')}</span>
-                <span class="pill-value">{btts2ndHalfPct}%</span>
-            </div>
-
-            <!-- Asian Handicap Section -->
-            <div class="prediction-pill ah-header">
-                <span class="pill-label">🎯 {$_('mlPrediction.asianHandicap')}</span>
-            </div>
-            {#if ahMinus15Pct !== null}
-                <div class="prediction-pill">
-                    <span class="pill-label">AH -1.5</span>
-                    <span class="pill-value">{ahMinus15Pct}%</span>
-                </div>
-            {/if}
-            <div class="prediction-pill">
-                <span class="pill-label">AH -1.0</span>
-                <span class="pill-value">{ahMinus10Pct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">AH -0.5</span>
-                <span class="pill-value">{ahMinus05Pct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">AH +0.5</span>
-                <span class="pill-value">{ahPlus05Pct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">AH +1.0</span>
-                <span class="pill-value">{ahPlus10Pct}%</span>
-            </div>
-            {#if ahPlus15Pct !== null}
-                <div class="prediction-pill">
-                    <span class="pill-label">AH +1.5</span>
-                    <span class="pill-value">{ahPlus15Pct}%</span>
-                </div>
-            {/if}
+        <!-- Markets, grouped into tabs -->
+        <div class="market-tabs" role="tablist">
+            {#each marketTabs as tab}
+                <button
+                    type="button"
+                    role="tab"
+                    class="market-tab {activeMarketTab === tab.id ? 'active' : ''}"
+                    aria-selected={activeMarketTab === tab.id}
+                    on:click={() => (activeMarketTab = tab.id)}
+                >
+                    {tab.label}
+                </button>
+            {/each}
         </div>
+
+        {#if activeMarketTab === 'goals'}
+            <div class="additional-predictions">
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('prediction.btts')}</span>
+                    <span class="pill-value">{bttsPct}%</span>
+                </div>
+                {#if over05Pct !== null}
+                    <div class="prediction-pill">
+                        <span class="pill-label">{$_('mlPrediction.over05', {default: 'Over 0.5 Goals'})}</span>
+                        <span class="pill-value">{over05Pct}%</span>
+                    </div>
+                    <div class="prediction-pill">
+                        <span class="pill-label">{$_('mlPrediction.under05', {default: 'Under 0.5 Goals'})}</span>
+                        <span class="pill-value">{under05Pct}%</span>
+                    </div>
+                {/if}
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.over15')}</span>
+                    <span class="pill-value">{over15Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.under15')}</span>
+                    <span class="pill-value">{under15Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('prediction.over25')}</span>
+                    <span class="pill-value">{over25Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('prediction.under25')}</span>
+                    <span class="pill-value">{under25Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.over35')}</span>
+                    <span class="pill-value">{over35Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.under35')}</span>
+                    <span class="pill-value">{under35Pct}%</span>
+                </div>
+                {#if over45Pct !== null}
+                    <div class="prediction-pill">
+                        <span class="pill-label">{$_('mlPrediction.over45', {default: 'Over 4.5 Goals'})}</span>
+                        <span class="pill-value">{over45Pct}%</span>
+                    </div>
+                    <div class="prediction-pill">
+                        <span class="pill-label">{$_('mlPrediction.under45', {default: 'Under 4.5 Goals'})}</span>
+                        <span class="pill-value">{under45Pct}%</span>
+                    </div>
+                {/if}
+            </div>
+        {:else if activeMarketTab === 'half'}
+            <div class="additional-predictions">
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.btts1stHalf')}</span>
+                    <span class="pill-value">{btts1stHalfPct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.btts2ndHalf')}</span>
+                    <span class="pill-value">{btts2ndHalfPct}%</span>
+                </div>
+            </div>
+        {:else if activeMarketTab === 'handicap'}
+            <div class="additional-predictions">
+                {#if ahMinus15Pct !== null}
+                    <div class="prediction-pill">
+                        <span class="pill-label">AH -1.5</span>
+                        <span class="pill-value">{ahMinus15Pct}%</span>
+                    </div>
+                {/if}
+                <div class="prediction-pill">
+                    <span class="pill-label">AH -1.0</span>
+                    <span class="pill-value">{ahMinus10Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">AH -0.5</span>
+                    <span class="pill-value">{ahMinus05Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">AH +0.5</span>
+                    <span class="pill-value">{ahPlus05Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">AH +1.0</span>
+                    <span class="pill-value">{ahPlus10Pct}%</span>
+                </div>
+                {#if ahPlus15Pct !== null}
+                    <div class="prediction-pill">
+                        <span class="pill-label">AH +1.5</span>
+                        <span class="pill-value">{ahPlus15Pct}%</span>
+                    </div>
+                {/if}
+            </div>
+        {:else if activeMarketTab === 'scores'}
+            <div class="scoreline-list">
+                {#each topScorelines as s}
+                    <div class="scoreline-row">
+                        <span class="scoreline-score">{s.score}</span>
+                        <div class="scoreline-bar-track">
+                            <div class="scoreline-bar" style="width: {Math.max(s.pct, 2)}%"></div>
+                        </div>
+                        <span class="scoreline-pct">{s.pct.toFixed(1)}%</span>
+                    </div>
+                {/each}
+            </div>
+        {:else if activeMarketTab === 'models'}
+            <div class="model-breakdown">
+                <div class="model-legend">
+                    <span><span class="dot home"></span>Home</span>
+                    <span><span class="dot draw"></span>Draw</span>
+                    <span><span class="dot away"></span>Away</span>
+                </div>
+                {#each modelBreakdown as m}
+                    <div class="model-row">
+                        <span class="model-name">{m.name}</span>
+                        <div class="model-bar">
+                            <div class="seg home" style="width: {m.home}%" title="Home {m.home.toFixed(0)}%"></div>
+                            <div class="seg draw" style="width: {m.draw}%" title="Draw {m.draw.toFixed(0)}%"></div>
+                            <div class="seg away" style="width: {m.away}%" title="Away {m.away.toFixed(0)}%"></div>
+                        </div>
+                    </div>
+                {/each}
+                <p class="model-note">How each model voted on the result. The published probability is their calibrated blend.</p>
+            </div>
+        {/if}
+
+        <p class="responsible-note">
+            18+ · Predictions are for informational and entertainment purposes only, not betting advice. Please gamble responsibly.
+        </p>
 
         {#if reasons.length > 0}
             <div class="reasons-block">
@@ -697,5 +806,152 @@
         .additional-predictions {
             grid-template-columns: 1fr;
         }
+    }
+
+    .market-tabs {
+        display: flex;
+        gap: 6px;
+        margin: 16px 0 12px;
+        flex-wrap: wrap;
+    }
+    .market-tab {
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(148, 163, 184, 0.9);
+        background: rgba(148, 163, 184, 0.08);
+        border: 1px solid transparent;
+        border-radius: 9999px;
+        cursor: pointer;
+        transition: all 120ms ease;
+    }
+    .market-tab:hover {
+        color: #fff;
+        background: rgba(148, 163, 184, 0.14);
+    }
+    .market-tab.active {
+        color: var(--accent, #06b6d4);
+        background: rgba(6, 182, 212, 0.12);
+        border-color: rgba(6, 182, 212, 0.35);
+    }
+
+    .responsible-note {
+        margin: 14px 0 0;
+        font-size: 0.72rem;
+        line-height: 1.4;
+        color: rgba(148, 163, 184, 0.85);
+        text-align: center;
+    }
+
+    /* Scorelines tab */
+    .scoreline-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .scoreline-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+    }
+    .scoreline-score {
+        width: 42px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .scoreline-bar-track {
+        flex: 1;
+        height: 8px;
+        border-radius: 9999px;
+        background: rgba(148, 163, 184, 0.12);
+        overflow: hidden;
+    }
+    .scoreline-bar {
+        height: 100%;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, #06b6d4, #3b82f6);
+    }
+    .scoreline-pct {
+        width: 52px;
+        text-align: right;
+        color: rgba(148, 163, 184, 0.95);
+        flex-shrink: 0;
+    }
+
+    /* Models tab */
+    .model-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .model-legend {
+        display: flex;
+        gap: 14px;
+        font-size: 0.72rem;
+        color: rgba(148, 163, 184, 0.9);
+        margin-bottom: 2px;
+    }
+    .model-legend .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+    .dot.home, .seg.home { background: #10b981; }
+    .dot.draw, .seg.draw { background: #64748b; }
+    .dot.away, .seg.away { background: #f43f5e; }
+    .model-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.82rem;
+    }
+    .model-name {
+        width: 96px;
+        flex-shrink: 0;
+        color: rgba(226, 232, 240, 0.95);
+    }
+    .model-bar {
+        flex: 1;
+        display: flex;
+        height: 10px;
+        border-radius: 9999px;
+        overflow: hidden;
+        background: rgba(148, 163, 184, 0.12);
+    }
+    .model-bar .seg {
+        height: 100%;
+    }
+    .model-note {
+        margin: 6px 0 0;
+        font-size: 0.72rem;
+        color: rgba(148, 163, 184, 0.8);
+    }
+
+    .acca-add-btn {
+        display: block;
+        width: 100%;
+        margin: 14px 0 0;
+        padding: 10px 16px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--accent, #06b6d4);
+        background: rgba(6, 182, 212, 0.1);
+        border: 1px solid rgba(6, 182, 212, 0.3);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 120ms ease;
+    }
+    .acca-add-btn:hover {
+        background: rgba(6, 182, 212, 0.18);
+    }
+    .acca-add-btn.added {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.35);
     }
 </style>

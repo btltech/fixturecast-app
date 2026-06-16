@@ -21,7 +21,10 @@
     "history": "Historico",
     "about": "Sobre",
     "terms": "Termos",
-    "privacy": "Privacidade"
+    "privacy": "Privacidade",
+    "accuracy": "Precisao",
+    "howItWorks": "Como funciona",
+    "accaBuilder": "Acumulador"
   },
   "home": {
     "hero": {
@@ -40,7 +43,7 @@
       "leaguesDesc": "Premier League, La Liga, Serie A, Bundesliga, Ligue 1"
     },
     "todaysFixtures": "Jogos de hoje",
-    "viewAIModels": "Ver modelos de IA",
+    "viewAIModels": "Ver as previsoes de hoje",
     "noMatchesDesc": "Volte amanha para novas previsoes!",
     "upcomingHeading": "Próximos jogos",
     "upcomingTomorrow": "Sem jogos hoje — veja os de amanhã:",
@@ -58,7 +61,7 @@
     "loading": "Carregando jogos...",
     "selectLeague": "Selecionar liga",
     "allLeagues": "Todas as ligas",
-    "matchesAcrossLeagues": "{count} jogos em {count} ligas",
+    "matchesAcrossLeagues": "{matchCount} jogos em {leagueCount} ligas",
     "allUpcoming": "Todos os proximos",
     "filterByDate": "Filtrar por data",
     "matchTime": "Hora do jogo",
@@ -93,7 +96,7 @@
     "tryDifferentDate": "Tente selecionar outra data ou ver todos os jogos.",
     "noScheduledFixtures": "Nao ha jogos futuros de {league} agendados.",
     "tryDifferentLeague": "Tente selecionar outra liga ou volte mais tarde.",
-    "europeanComps": "EUROPEIAS",
+    "europeanComps": "Copas e Internacionais",
     "topLeagues": "PRINCIPAIS LIGAS",
     "champLeagues": "SEGUNDA DIVISAO",
     "domesticCups": "COPAS NACIONAIS",
@@ -172,7 +175,7 @@
     "relegation": "Rebaixamento",
     "leagueStandings": "Classificação do campeonato",
     "loading": "Carregando classificação...",
-    "europeanComps": "Competições europeias",
+    "europeanComps": "Copas e Internacionais",
     "topLeagues": "Principais ligas",
     "moreLeagues": "Mais ligas",
     "domesticCups": "Copas nacionais",
@@ -270,8 +273,8 @@
   },
   "mlPredictions": {
     "title": "Previsoes IA de partidas",
-    "subtitle": "Previsoes para as principais ligas da Europa e competicoes da UEFA.",
-    "europeanCompetitions": "Competicoes europeias",
+    "subtitle": "Previsoes de IA para a Copa do Mundo, principais ligas e competicoes.",
+    "europeanCompetitions": "Copas e Internacionais",
     "topLeagues": "Principais ligas",
     "secondDivision": "Segunda divisao",
     "friendlies": "Amistosos",
@@ -380,8 +383,8 @@
     "browseUpcoming": "Ver proximos jogos",
     "matchOfTheDay": "Jogo do dia",
     "viewAnalysis": "Ver analise de IA",
-    "matchesPlayingToday": "{count} jogos hoje",
-    "leagueCount": "{count} ligas",
+    "matchesPlayingToday": "{count, plural, one {# jogo hoje} other {# jogos hoje}}",
+    "leagueCount": "{count, plural, one {# liga} other {# ligas}}",
     "matchCount": "{count} jogos"
   },
   "share": {
@@ -453,7 +456,8 @@
   "searchBar": {
     "placeholder": "Buscar equipes ou partidas...",
     "teamsSection": "EQUIPES",
-    "fixturesSection": "PARTIDAS"
+    "fixturesSection": "PARTIDAS",
+    "leaguesSection": "Ligas"
   },
   "compare": {
     "button": "Comparar ({count})",
@@ -510,10 +514,10 @@
     "firstTip": "Dica: volte amanha de manha para ver suas primeiras dicas de acumuladores geradas por IA!",
     "noMatchesTodayTitle": "Nenhum jogo hoje",
     "noMatchesTodayDesc": "Nao ha jogos agendados para hoje em todas as ligas suportadas.",
-    "qualityCheckFailed": "Falha na verificacao de qualidade",
+    "qualityCheckFailed": "Sem acumuladores hoje",
     "qualityCheckDesc": "Ha {count} jogos agendados hoje, mas as previsoes nao atingem nossos limites minimos de confianca.",
     "whyNoAccas": "Por que nao ha acumuladores?",
-    "highConfidenceFound": "Encontramos {count} previsoes de alta confianca (precisamos de 8+)",
+    "highConfidenceFound": "Previsoes qualificadas hoje: {count} (precisa de 8+ para um acumulador)",
     "limitedData": "Conference League e ligas menores costumam ter dados limitados",
     "confidenceThreshold": "So geramos acumuladores com previsoes entre 60% e 85% de confianca",
     "protectsYou": "Isso protege voce de apostas de baixa qualidade",
@@ -738,5 +742,11 @@
     "loading": "Carregando métricas...",
     "warning": "Aviso",
     "errorPrefix": "Erro:"
+  },
+  "leagueGroups": {
+    "cupsInternationals": "Copas e Internacionais",
+    "topLeagues": "Principais ligas",
+    "moreLeagues": "Mais ligas",
+    "domesticCups": "Copas nacionais"
   }
 }

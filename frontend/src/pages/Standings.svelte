@@ -11,6 +11,7 @@
     saveLeague,
   } from "../services/preferences.js";
   import { LEAGUES } from "../services/leagues.js";
+  import { getLeagueGroups } from "../services/leagueGroups.js";
   import { isCalendarYearLeague } from "../services/season.js";
 
   let selectedLeague = getSavedLeague(39); // Premier League default (persisted)
@@ -31,11 +32,8 @@
   // Default: show all leagues while loading (prevents empty selector on first paint)
   let activeLeagueIds = new Set(LEAGUES.map((l) => l.id));
 
-  // Group leagues by tier — filtered to only those currently active
-  $: europeanLeagues = leagues.filter((l) => l.tier === 0 && activeLeagueIds.has(l.id));
-  $: topLeagues = leagues.filter((l) => l.tier === 1 && activeLeagueIds.has(l.id));
-  $: secondDivisions = leagues.filter((l) => l.tier === 2 && activeLeagueIds.has(l.id));
-  $: cups = leagues.filter((l) => l.tier === 3 && activeLeagueIds.has(l.id));
+  // Canonical, ordered grouping (shared with other pages), restricted to active leagues.
+  $: leagueGroups = getLeagueGroups(leagues, { filterIds: activeLeagueIds });
 
   async function fetchStandings() {
     loading = true;
@@ -119,105 +117,31 @@
 
     <!-- League Selector - Grouped by tier -->
     <div class="space-y-4">
-      <!-- European Competitions -->
-      <div>
-        <h3 class="text-xs uppercase tracking-wider text-slate-400 mb-2">
-          🏆 {$_('standings.europeanComps')}
-        </h3>
-        <div class="flex flex-wrap gap-2">
-          {#each europeanLeagues as league}
-            <button
-              on:click={() => {
-                selectedLeague = league.id;
-                saveLeague(selectedLeague);
-                fetchStandings();
-              }}
-              class="px-3 py-2 rounded-lg text-sm btn-interact touch-target {selectedLeague ===
-              league.id
-                ? 'bg-yellow-500/80 text-black font-medium'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
+      <!-- League groups (shared canonical grouping — see services/leagueGroups.js) -->
+      {#each leagueGroups as group}
+        <div>
+          <h3 class="text-xs uppercase tracking-wider text-slate-400 mb-2">
+            {group.emoji} {$_(group.labelKey)}
+          </h3>
+          <div class="flex flex-wrap gap-2">
+            {#each group.leagues as league}
+              <button
+                on:click={() => {
+                  selectedLeague = league.id;
+                  saveLeague(selectedLeague);
+                  fetchStandings();
+                }}
+                class="px-3 py-1.5 rounded-lg text-sm btn-interact touch-target {selectedLeague === league.id
+                  ? 'bg-accent text-white font-medium'
+                  : 'bg-white/5 hover:bg-white/10'}"
+              >
+                <span class="mr-1">{league.emoji}</span>
+                {league.name}
+              </button>
+            {/each}
+          </div>
         </div>
-      </div>
-
-      <!-- Top Leagues -->
-      <div>
-        <h3 class="text-xs uppercase tracking-wider text-slate-400 mb-2">
-          ⭐ {$_('standings.topLeagues')}
-        </h3>
-        <div class="flex flex-wrap gap-2">
-          {#each topLeagues as league}
-            <button
-              on:click={() => {
-                selectedLeague = league.id;
-                saveLeague(selectedLeague);
-                fetchStandings();
-              }}
-              class="px-3 py-1.5 rounded-lg text-sm btn-interact {selectedLeague ===
-              league.id
-                ? 'bg-accent text-white font-medium'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- More Leagues -->
-      <div>
-        <h3 class="text-xs uppercase tracking-wider text-slate-400 mb-2">
-          📊 {$_('standings.moreLeagues')}
-        </h3>
-        <div class="flex flex-wrap gap-2">
-          {#each secondDivisions as league}
-            <button
-              on:click={() => {
-                selectedLeague = league.id;
-                saveLeague(selectedLeague);
-                fetchStandings();
-              }}
-              class="px-3 py-1.5 rounded-lg text-sm btn-interact {selectedLeague ===
-              league.id
-                ? 'bg-accent text-white font-medium'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Domestic Cups -->
-      <div>
-        <h3 class="text-xs uppercase tracking-wider text-slate-400 mb-2">
-          🏆 {$_('standings.domesticCups')}
-        </h3>
-        <div class="flex flex-wrap gap-2">
-          {#each cups as league}
-            <button
-              on:click={() => {
-                selectedLeague = league.id;
-                saveLeague(selectedLeague);
-                fetchStandings();
-              }}
-              class="px-3 py-1.5 rounded-lg text-sm btn-interact touch-target {selectedLeague ===
-              league.id
-                ? 'bg-orange-500/80 text-white font-medium'
-                : 'bg-white/5 hover:bg-white/10'}"
-            >
-              <span class="mr-1">{league.flag}</span>
-              {league.name}
-            </button>
-          {/each}
-        </div>
-      </div>
+      {/each}
     </div>
   </div>
 

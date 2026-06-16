@@ -19,7 +19,7 @@
 
   <div class="glass-card p-8 element-enter stagger-2">
     <h1 class="text-3xl font-bold text-white mb-2">Privacy Policy</h1>
-    <p class="text-slate-400 mb-8">Last updated: December 2025</p>
+    <p class="text-slate-400 mb-8">Last updated: June 2026</p>
 
     <div class="prose prose-invert max-w-none space-y-6 text-slate-300">
       <section>
@@ -43,9 +43,10 @@
           <li><strong>Technical Data:</strong> IP address, browser type, device information, and operating system</li>
           <li><strong>Usage Data:</strong> Pages visited, features used, and time spent on the site</li>
           <li><strong>Cookie Data:</strong> Information stored via cookies (see our Cookie Policy)</li>
+          <li><strong>Email Address:</strong> Only if you voluntarily subscribe to our newsletter or request free picks by email. Used solely to send the predictions/updates you signed up for; you can unsubscribe at any time.</li>
         </ul>
         <p class="mt-3">
-          We do <strong>not</strong> collect: names, email addresses, payment information, or gambling activity data.
+          We do <strong>not</strong> collect: your name, payment information, or gambling activity data.
         </p>
       </section>
 

@@ -882,6 +882,50 @@ class PredictionDB:
             return None
 
     @staticmethod
+    def get_settled_predictions(
+        days: Optional[int] = None,
+        league_id: Optional[int] = None,
+        exclude_low_confidence: bool = False,
+        limit: int = 20000,
+    ) -> List[Dict]:
+        """Return raw evaluated predictions (probability vectors + realized goals).
+
+        For proper-scoring-rule evaluation (Brier / log-loss / calibration) — the
+        aggregate stats methods only keep correct/total counts, which can't measure
+        calibration. Read-only. Filters: ``days`` (rolling window on match_date),
+        ``league_id``, and ``exclude_low_confidence`` (drop confidence_level 'low').
+        Newest first.
+        """
+        with get_db() as conn:
+            cursor = conn.cursor()
+            ph = _get_placeholder()
+            clauses = ["evaluated = 1", "actual_outcome IS NOT NULL"]
+            params: List = []
+            if days is not None and days > 0:
+                clauses.append(f"match_date >= {ph}")
+                params.append((datetime.now() - timedelta(days=days)).isoformat())
+            if league_id is not None:
+                clauses.append(f"league_id = {ph}")
+                params.append(league_id)
+            if exclude_low_confidence:
+                clauses.append("confidence_level <> 'low'")
+            where = " AND ".join(clauses)
+            cursor.execute(
+                f"""
+                SELECT home_win_prob, draw_prob, away_win_prob, actual_outcome,
+                       confidence_level, league_id, league_name,
+                       btts_prob, over25_prob,
+                       result_home_goals, result_away_goals
+                FROM predictions
+                WHERE {where}
+                ORDER BY match_date DESC
+                LIMIT {int(limit)}
+                """,
+                tuple(params),
+            )
+            return [_row_to_dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
     def _update_daily_metrics(cursor, date: str):
         """Update aggregated daily metrics."""
         ph = _get_placeholder()

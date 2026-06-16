@@ -21,7 +21,10 @@
     "history": "History",
     "about": "About",
     "terms": "Terms",
-    "privacy": "Privacy"
+    "privacy": "Privacy",
+    "accuracy": "Accuracy",
+    "howItWorks": "How It Works",
+    "accaBuilder": "Acca Builder"
   },
   "home": {
     "hero": {
@@ -40,7 +43,7 @@
       "leaguesDesc": "Premier League, La Liga, Serie A, Bundesliga, Ligue 1"
     },
     "todaysFixtures": "Today's Fixtures",
-    "viewAIModels": "View AI Models",
+    "viewAIModels": "See Today's Predictions",
     "noMatchesDesc": "Check back tomorrow for new predictions!",
     "todayMatchesHeading": "Today's Matches",
     "viewAllMatches": "View all {count} matches",
@@ -58,7 +61,7 @@
     "loading": "Loading fixtures...",
     "selectLeague": "Select League",
     "allLeagues": "All Leagues",
-    "matchesAcrossLeagues": "{count} matches across {count} leagues",
+    "matchesAcrossLeagues": "{matchCount} matches across {leagueCount} leagues",
     "allUpcoming": "All Upcoming",
     "filterByDate": "Filter by Date",
     "matchTime": "Match Time",
@@ -93,7 +96,7 @@
     "tryDifferentDate": "Try selecting a different date or view all fixtures.",
     "noScheduledFixtures": "There are no upcoming {league} fixtures scheduled.",
     "tryDifferentLeague": "Try selecting a different league or check back later!",
-    "europeanComps": "EUROPEAN",
+    "europeanComps": "Cups & Internationals",
     "topLeagues": "TOP LEAGUES",
     "champLeagues": "CHAMPIONSHIP",
     "domesticCups": "DOMESTIC CUPS",
@@ -172,7 +175,7 @@
     "relegation": "Relegation",
     "leagueStandings": "League Standings",
     "loading": "Loading standings...",
-    "europeanComps": "European Competitions",
+    "europeanComps": "Cups & Internationals",
     "topLeagues": "Top Leagues",
     "moreLeagues": "More Leagues",
     "domesticCups": "Domestic Cups",
@@ -270,8 +273,8 @@
   },
   "mlPredictions": {
     "title": "AI Match Predictions",
-    "subtitle": "Predicting Europe's elite leagues and UEFA competitions.",
-    "europeanCompetitions": "European Competitions",
+    "subtitle": "AI predictions across the World Cup, top leagues and major competitions.",
+    "europeanCompetitions": "Cups & Internationals",
     "topLeagues": "Top Leagues",
     "secondDivision": "Second Division",
     "friendlies": "Friendlies",
@@ -380,8 +383,8 @@
     "browseUpcoming": "Browse Upcoming Fixtures",
     "matchOfTheDay": "Match of the Day",
     "viewAnalysis": "View AI Analysis",
-    "matchesPlayingToday": "{count} matches playing today",
-    "leagueCount": "{count} leagues",
+    "matchesPlayingToday": "{count, plural, one {# match playing today} other {# matches playing today}}",
+    "leagueCount": "{count, plural, one {# league} other {# leagues}}",
     "matchCount": "{count} matches"
   },
   "share": {
@@ -453,7 +456,8 @@
   "searchBar": {
     "placeholder": "Search teams or fixtures...",
     "teamsSection": "TEAMS",
-    "fixturesSection": "FIXTURES"
+    "fixturesSection": "FIXTURES",
+    "leaguesSection": "Leagues"
   },
   "compare": {
     "button": "Compare ({count})",
@@ -510,10 +514,10 @@
     "firstTip": "Tip: Come back tomorrow morning for your first AI-generated accumulator tips!",
     "noMatchesTodayTitle": "No Matches Today",
     "noMatchesTodayDesc": "No fixtures scheduled for today across all supported leagues.",
-    "qualityCheckFailed": "Quality Check Failed",
+    "qualityCheckFailed": "No Accumulators Today",
     "qualityCheckDesc": "{count} fixtures are on the schedule today, but not enough predictions passed our confidence and value filters.",
     "whyNoAccas": "Why no accumulators?",
-    "highConfidenceFound": "We found {count} filtered predictions that qualified for acca consideration (need 8+)",
+    "highConfidenceFound": "Qualifying predictions today: {count} (need 8+ for an accumulator)",
     "limitedData": "Conference League and smaller leagues often have limited data",
     "confidenceThreshold": "We only generate accumulators from predictions with 60-85% confidence",
     "protectsYou": "This protects you from low-quality bets",
@@ -738,5 +742,11 @@
     "loading": "Loading metrics...",
     "warning": "Warning",
     "errorPrefix": "Error:"
+  },
+  "leagueGroups": {
+    "cupsInternationals": "Cups & Internationals",
+    "topLeagues": "Top Leagues",
+    "moreLeagues": "More Leagues",
+    "domesticCups": "Domestic Cups"
   }
 }

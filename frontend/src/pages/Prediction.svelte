@@ -43,10 +43,12 @@
     }, 2600);
   }
 
-  // Generate SEO data when fixture loads
+  // Generate SEO data when fixture loads. The API returns the fixture under
+  // `fixture_details` (not `fixture`), so the previous `data.fixture` check was always
+  // falsy — leaving the per-fixture <title> as the generic default. Use the right path.
   $: seoData =
-    data && data.fixture
-      ? generatePredictionSEO(data.fixture, data.prediction, $locale)
+    data && data.fixture_details
+      ? generatePredictionSEO(data.fixture_details, data.prediction, $locale)
       : null;
 
   // Use reactive auto-subscription ($ prefix) - automatically unsubscribes

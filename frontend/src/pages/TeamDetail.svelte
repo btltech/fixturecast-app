@@ -308,6 +308,15 @@
 
     <!-- Key Stats Bar - Optimized -->
     {#if stats}
+      {#if !(stats.fixtures?.played?.total)}
+        <div
+          class="glass-card p-4 border border-amber-500/30 text-amber-300/90 text-sm element-enter"
+        >
+          ⚠️ Detailed season stats aren't available for this team yet — common for
+          national teams during international tournaments. The figures below may read
+          zero until match data has been collected.
+        </div>
+      {/if}
       <div
         class="grid grid-cols-2 md:grid-cols-4 gap-4 element-enter stagger-1"
       >

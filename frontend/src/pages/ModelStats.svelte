@@ -13,6 +13,7 @@
   let backtestHistory = null;
   let timeBacktestReport = null;
   let marketMetrics = null;  // 3-market accuracy data
+  let calibration = null;    // Brier / log-loss / ECE / reliability bins
   let loading = true;
   let error = null;
   let apiAvailable = false;
@@ -76,6 +77,16 @@
       if (reportResponse.ok) {
         timeBacktestReport = await reportResponse.json();
       }
+
+      // Fetch honest scoring + calibration (Brier / log-loss / ECE / reliability)
+      const calibResponse = await fetch(
+        `${ML_API_URL}/api/metrics/calibration-report?days=90&ts=${Date.now()}`,
+        { cache: "no-store" },
+      );
+      if (calibResponse.ok) {
+        const c = await calibResponse.json();
+        if (c && c.available) calibration = c;
+      }
     } catch (err) {
       apiAvailable = false;
     } finally {
@@ -107,6 +118,87 @@
       <p class="mt-4 text-slate-400">{$_('common.loading')}</p>
     </div>
   {:else}
+    <!-- Calibration & scoring (honest proper-scoring-rule metrics) -->
+    {#if calibration && calibration.one_x_two}
+      {@const oxt = calibration.one_x_two}
+      {@const rel = oxt.reliability || { bins: [], ece: 0 }}
+      <div class="glass-card p-6 border border-cyan-500/30">
+        <h2 class="text-xl font-bold text-cyan-400 mb-1">
+          {$_('modelStats.calibrationTitle') || 'Calibration & Scoring'}
+        </h2>
+        <p class="text-slate-400 text-sm mb-4">
+          Last {calibration.window_days} days · {oxt.n} settled matches{calibration.excluded_low_confidence ? ' · low-confidence picks excluded' : ''}.
+          Lower Brier / log-loss is better; ECE near 0 means the probabilities are honest.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div class="bg-slate-800/50 rounded-lg p-4">
+            <div class="text-xs text-slate-400 uppercase tracking-wide">Brier</div>
+            <div class="text-2xl font-bold">{oxt.brier.toFixed(3)}</div>
+            <div class="text-xs text-slate-500">vs {oxt.brier_baseline_uniform.toFixed(3)} random</div>
+          </div>
+          <div class="bg-slate-800/50 rounded-lg p-4">
+            <div class="text-xs text-slate-400 uppercase tracking-wide">Log loss</div>
+            <div class="text-2xl font-bold">{oxt.log_loss.toFixed(3)}</div>
+            <div class="text-xs text-slate-500">vs {oxt.log_loss_baseline_uniform.toFixed(3)} random</div>
+          </div>
+          <div class="bg-slate-800/50 rounded-lg p-4">
+            <div class="text-xs text-slate-400 uppercase tracking-wide">Calibration error (ECE)</div>
+            <div class="text-2xl font-bold">{(rel.ece * 100).toFixed(1)}%</div>
+            <div class="text-xs text-slate-500">accuracy {(oxt.accuracy * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+
+        <!-- Reliability: stated confidence vs actual hit-rate, per bucket -->
+        <h3 class="text-sm font-semibold text-slate-300 mb-2">Reliability — does "X%" actually happen X% of the time?</h3>
+        <div class="space-y-2 mb-2">
+          {#each rel.bins.filter((b) => b.count > 0) as b}
+            <div class="flex items-center gap-3 text-xs">
+              <div class="w-20 text-slate-400 shrink-0">{Math.round(b.lo * 100)}–{Math.round(b.hi * 100)}%</div>
+              <div class="flex-1 space-y-1">
+                <div class="h-2.5 rounded bg-slate-700/60" style="width: {Math.max(b.mean_confidence * 100, 2)}%"></div>
+                <div class="h-2.5 rounded bg-cyan-500" style="width: {Math.max(b.accuracy * 100, 2)}%"></div>
+              </div>
+              <div class="w-28 text-right text-slate-400 shrink-0">
+                said {(b.mean_confidence * 100).toFixed(0)}% · hit {(b.accuracy * 100).toFixed(0)}%
+              </div>
+              <div class="w-12 text-right text-slate-500 shrink-0">n={b.count}</div>
+            </div>
+          {/each}
+        </div>
+        <div class="text-xs text-slate-500 mb-4">
+          <span class="inline-block w-3 h-2 rounded bg-slate-700/60 align-middle"></span> stated confidence ·
+          <span class="inline-block w-3 h-2 rounded bg-cyan-500 align-middle"></span> actual hit-rate
+        </div>
+
+        {#if calibration.markets && calibration.markets.length > 0}
+          <h3 class="text-sm font-semibold text-slate-300 mb-2">By market</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-slate-400 text-left text-xs uppercase">
+                  <th class="py-1 pr-4">Market</th>
+                  <th class="py-1 pr-4">Hit rate</th>
+                  <th class="py-1 pr-4">Brier</th>
+                  <th class="py-1 pr-4">Sample</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each calibration.markets as m}
+                  <tr class="border-t border-slate-700/50">
+                    <td class="py-1.5 pr-4 font-medium">{m.market}</td>
+                    <td class="py-1.5 pr-4">{(m.accuracy * 100).toFixed(1)}%</td>
+                    <td class="py-1.5 pr-4">{m.brier.toFixed(3)}</td>
+                    <td class="py-1.5 pr-4 text-slate-400">n={m.n}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     <!-- Weekly Performance Section (Backtest Results) - Only show if we have real data -->
     {#if dedupedBacktestHistory && dedupedBacktestHistory.length > 0}
       <div class="glass-card p-6 border border-green-500/30">

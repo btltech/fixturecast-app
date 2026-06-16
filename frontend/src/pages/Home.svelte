@@ -35,9 +35,26 @@
     );
   }
 
+  let trackRecord = null; // { accuracy (0-1), total } from tracked predictions
+
   onMount(async () => {
     await loadTodaysData();
+    loadTrackRecord();
   });
+
+  async function loadTrackRecord() {
+    try {
+      const res = await fetch(`${API_URL}/api/feedback/performance`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const o = data && data.overall;
+      if (o && o.total > 0 && typeof o.accuracy === "number") {
+        trackRecord = { accuracy: o.accuracy, total: o.total };
+      }
+    } catch (e) {
+      // best-effort: hero proof stat is optional
+    }
+  }
 
   async function loadTodaysData(retries = 2) {
     loading = true;
@@ -103,7 +120,7 @@
     </div>
 
     <div
-      class="glass-card p-8 md:p-12 lg:p-16 text-center relative overflow-hidden group border-white/5"
+      class="glass-card p-6 md:p-8 lg:p-10 text-center relative overflow-hidden group border-white/5"
     >
       <div
         class="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"
@@ -130,7 +147,7 @@
       </div>
 
       <h1
-        class="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 tracking-tight leading-none"
+        class="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-3 tracking-tight leading-none"
       >
         <span
           class="text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-slate-400"
@@ -142,12 +159,24 @@
       </h1>
 
       <p
-        class="font-light text-lg sm:text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+        class="font-light text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-5 leading-relaxed"
       >
-        Next-generation football forecasting powered by <span
-          class="text-white font-medium">advanced AI</span
-        >.
+        AI match predictions across 90+ competitions — with the
+        <Link to="/models" class="text-white font-medium hover:underline">track record</Link>
+        to back them up.
       </p>
+
+      {#if trackRecord && trackRecord.total >= 50}
+        <div class="flex justify-center mb-6">
+          <Link
+            to="/models"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm font-medium hover:bg-cyan-500/15 transition-colors"
+          >
+            📊 <span class="text-white font-bold">{(trackRecord.accuracy * 100).toFixed(0)}%</span>
+            accuracy across {trackRecord.total.toLocaleString()} tracked predictions
+          </Link>
+        </div>
+      {/if}
 
       <div
         class="flex flex-col sm:flex-row justify-center gap-4 sm:gap-5 w-full max-w-lg mx-auto relative z-10"
@@ -198,7 +227,7 @@
           to="/ai"
           class="px-8 py-4 sm:px-10 sm:py-5 rounded-2xl bg-white/5 text-white font-bold text-lg border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all hover:-translate-y-1 backdrop-blur-sm text-center"
         >
-          View AI Models
+          See Today's Predictions
         </Link>
       </div>
 
@@ -663,7 +692,7 @@
         Fixtures
       </h3>
       <p class="text-sm text-slate-400 leading-relaxed">
-        Browse matches playing today across all 51 leagues.
+        Browse matches playing today across 90+ competitions.
       </p>
     </Link>
 

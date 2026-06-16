@@ -19,7 +19,7 @@
 
   <div class="glass-card p-8 element-enter stagger-2">
     <h1 class="text-3xl font-bold text-white mb-2">Terms of Service</h1>
-    <p class="text-slate-400 mb-8">Last updated: December 2025</p>
+    <p class="text-slate-400 mb-8">Last updated: June 2026</p>
 
     <div class="prose prose-invert max-w-none space-y-6 text-slate-300">
       <section>
