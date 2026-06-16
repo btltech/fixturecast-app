@@ -205,12 +205,14 @@
   $: actualScore = matchFinished ? data?.fixture_details?.goals : null;
   $: resultFeedback = (() => {
     if (!matchFinished || !actualScore || !data?.prediction) return null;
+    const p = data.prediction;
     const homeGoals = actualScore.home ?? 0;
     const awayGoals = actualScore.away ?? 0;
-    const predictedHome = data.prediction.home_win_prob || 0;
-    const predictedDraw = data.prediction.draw_prob || 0;
-    const predictedAway = data.prediction.away_win_prob || 0;
-    // Determine what AI predicted
+    const totalGoals = homeGoals + awayGoals;
+    const predictedHome = p.home_win_prob || 0;
+    const predictedDraw = p.draw_prob || 0;
+    const predictedAway = p.away_win_prob || 0;
+    // Determine what AI predicted (1X2)
     let aiPrediction;
     if (predictedHome >= predictedDraw && predictedHome >= predictedAway)
       aiPrediction = "home";
@@ -222,10 +224,64 @@
     if (homeGoals > awayGoals) actualResult = "home";
     else if (awayGoals > homeGoals) actualResult = "away";
     else actualResult = "draw";
+    const oneX2Correct = aiPrediction === actualResult;
+
+    // Score every market we published, not just 1X2
+    const markets = [
+      {
+        label: "1X2",
+        pick:
+          aiPrediction === "home"
+            ? "Home"
+            : aiPrediction === "away"
+              ? "Away"
+              : "Draw",
+        correct: oneX2Correct,
+      },
+    ];
+    if (typeof p.over25_prob === "number") {
+      const pickedOver = p.over25_prob >= 0.5;
+      markets.push({
+        label: "Over/Under 2.5",
+        pick: pickedOver ? "Over 2.5" : "Under 2.5",
+        correct: pickedOver === (totalGoals > 2.5),
+      });
+    }
+    if (typeof p.btts_prob === "number") {
+      const pickedYes = p.btts_prob >= 0.5;
+      const bttsYes = homeGoals > 0 && awayGoals > 0;
+      markets.push({
+        label: "BTTS",
+        pick: pickedYes ? "Yes" : "No",
+        correct: pickedYes === bttsYes,
+      });
+    }
+    // Headline ratio is over the three tracked probabilistic markets only.
+    const hits = markets.filter((m) => m.correct).length;
+    const total = markets.length;
+    // win = main pick landed; partial = main pick missed but a side market hit
+    const status = oneX2Correct ? "win" : hits > 0 ? "partial" : "miss";
+
+    // Exact-scoreline shown as a bonus chip — not counted in the ratio above,
+    // since hitting the precise score is a long shot by nature.
+    const predScoreNorm = (p.predicted_scoreline || "").replace(/\s/g, "");
+    if (predScoreNorm) {
+      markets.push({
+        label: "Exact Score",
+        pick: predScoreNorm,
+        correct: predScoreNorm === `${homeGoals}-${awayGoals}`,
+        bonus: true,
+      });
+    }
+
     return {
-      correct: aiPrediction === actualResult,
+      correct: oneX2Correct,
+      status,
+      markets,
+      hits,
+      total,
       actualScore: `${homeGoals} - ${awayGoals}`,
-      predictedScore: data.prediction.predicted_scoreline || "?",
+      predictedScore: p.predicted_scoreline || "?",
     };
   })();
 </script>
@@ -262,22 +318,34 @@
     <!-- Result Feedback Banner -->
     {#if resultFeedback}
       <div
-        class="element-enter stagger-1 {resultFeedback.correct
+        class="element-enter stagger-1 {resultFeedback.status === 'win'
           ? 'glass-card border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-transparent'
-          : 'glass-card border-red-500/30 bg-gradient-to-r from-red-500/10 to-transparent'} p-4 md:p-5"
+          : resultFeedback.status === 'partial'
+            ? 'glass-card border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-transparent'
+            : 'glass-card border-red-500/30 bg-gradient-to-r from-red-500/10 to-transparent'} p-4 md:p-5"
       >
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-3">
-            <span class="text-2xl">{resultFeedback.correct ? "✅" : "❌"}</span>
+            <span class="text-2xl"
+              >{resultFeedback.status === "win"
+                ? "✅"
+                : resultFeedback.status === "partial"
+                  ? "➗"
+                  : "❌"}</span
+            >
             <div>
               <div
-                class="font-bold text-base {resultFeedback.correct
+                class="font-bold text-base {resultFeedback.status === 'win'
                   ? 'text-emerald-400'
-                  : 'text-red-400'}"
+                  : resultFeedback.status === 'partial'
+                    ? 'text-amber-400'
+                    : 'text-red-400'}"
               >
-                {resultFeedback.correct
+                {resultFeedback.status === "win"
                   ? "AI Got It Right!"
-                  : "Prediction Missed"}
+                  : resultFeedback.status === "partial"
+                    ? `Main pick missed · ${resultFeedback.hits} of ${resultFeedback.total} markets hit`
+                    : "Prediction Missed"}
               </div>
               <div class="text-sm text-slate-400">
                 Match ended {matchStatus}
@@ -300,6 +368,40 @@
             </div>
           </div>
         </div>
+
+        <!-- Per-market scorecard: credit the markets that landed -->
+        {#if resultFeedback.markets.length > 1}
+          <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/10">
+            {#each resultFeedback.markets as m}
+              {#if m.bonus}
+                <span
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border {m.correct
+                    ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
+                    : 'border-white/10 bg-white/5 text-slate-400'}"
+                >
+                  <span>{m.correct ? "🎯" : "○"}</span>
+                  <span class="text-slate-500">{m.label}:</span>
+                  <span class="font-semibold">{m.pick}</span>
+                  {#if m.correct}
+                    <span class="uppercase tracking-wide text-[9px] text-amber-400"
+                      >bonus</span
+                    >
+                  {/if}
+                </span>
+              {:else}
+                <span
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border {m.correct
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    : 'border-red-500/30 bg-red-500/10 text-red-300'}"
+                >
+                  <span>{m.correct ? "✓" : "✗"}</span>
+                  <span class="text-slate-400">{m.label}:</span>
+                  <span class="font-semibold">{m.pick}</span>
+                </span>
+              {/if}
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
 

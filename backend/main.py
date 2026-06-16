@@ -199,6 +199,21 @@ def _calculate_fixture_importance(
     return int(importance), bool(is_big_clash), int(league_prio), float(kickoff_ts), int(fixture_id)
 
 
+# Statuses where a match should NOT be featured as "Match of the Day":
+# already finished, abandoned, or won't be played as scheduled.
+_MOTD_CONCLUDED_STATUSES = {"FT", "AET", "PEN", "PST", "CANC", "ABD", "AWD", "WO"}
+
+
+def _fixture_status_short(fixture: Dict[str, Any]) -> str:
+    return str(
+        ((fixture.get("fixture", {}) or {}).get("status", {}) or {}).get("short") or ""
+    ).upper()
+
+
+def _is_concluded_fixture(fixture: Dict[str, Any]) -> bool:
+    return _fixture_status_short(fixture) in _MOTD_CONCLUDED_STATUSES
+
+
 def _select_match_of_the_day(
     fixtures: List[Dict[str, Any]],
     league_priority: Optional[List[int]] = None,
@@ -213,8 +228,18 @@ def _select_match_of_the_day(
         importance, is_big_clash, league_prio, kickoff_ts, fixture_id = (
             _calculate_fixture_importance(f, league_priority_index)
         )
+        # Concluded / non-playable matches sink to the bottom (status_rank=1) so a
+        # finished game is only ever featured when nothing else is available.
+        status_rank = 1 if _is_concluded_fixture(f) else 0
         # Python sorts ascending; invert the fields where higher is better.
-        return (-importance, -int(is_big_clash), league_prio, kickoff_ts, fixture_id)
+        return (
+            status_rank,
+            -importance,
+            -int(is_big_clash),
+            league_prio,
+            kickoff_ts,
+            fixture_id,
+        )
 
     best = min(fixtures, key=sort_key)
     importance, is_big_clash, league_prio, kickoff_ts, fixture_id = _calculate_fixture_importance(
@@ -227,6 +252,8 @@ def _select_match_of_the_day(
         "league_priority_index": None if league_prio == 10_000 else league_prio,
         "kickoff_ts": kickoff_ts if kickoff_ts != float("inf") else None,
         "fixture_id": fixture_id,
+        "status": _fixture_status_short(best),
+        "is_concluded": _is_concluded_fixture(best),
     }
     return best, meta
 
@@ -1076,13 +1103,15 @@ async def get_todays_fixtures():
             all_fixtures, league_priority=priority_leagues
         )
 
-        # When today has no matches, look ahead up to 3 days for upcoming fixtures
-        # so the frontend can show something useful instead of a dead-end empty state.
+        # Look ahead up to 3 days for upcoming fixtures when today has no matches
+        # at all, OR when every match today has already concluded — so the frontend
+        # never shows a dead-end empty state or a stale, finished Match of the Day.
         upcoming_fixtures: List[Dict[str, Any]] = []
         upcoming_date: Optional[str] = None
         upcoming_days_ahead: Optional[int] = None
 
-        if not all_fixtures:
+        motd_concluded = bool(motd_meta and motd_meta.get("is_concluded"))
+        if not all_fixtures or motd_concluded:
             for day_offset in range(1, 4):
                 check_date = (
                     datetime.strptime(today, "%Y-%m-%d") + timedelta(days=day_offset)
@@ -1093,6 +1122,14 @@ async def get_todays_fixtures():
                     upcoming_fixtures = candidates[:12]
                     upcoming_date = check_date
                     upcoming_days_ahead = day_offset
+                    # If today's slate is fully concluded, feature the next big match
+                    # instead of leaving a finished game pinned to the hero.
+                    if motd_concluded:
+                        next_motd, next_meta = _select_match_of_the_day(
+                            candidates, league_priority=priority_leagues
+                        )
+                        if next_motd is not None:
+                            match_of_the_day, motd_meta = next_motd, next_meta
                     break
 
         result = {
