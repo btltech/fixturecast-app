@@ -244,6 +244,13 @@ class ApiClient:
         league_str = str(league_id)
         if league_str in self.competition_metadata:
             return self.competition_metadata[league_str]
+        return {
+            "type": "domestic_league",
+            "format": "league",
+            "two_leg_knockout": False,
+            "neutral_final": False,
+            "prestige_factor": 1.0,
+        }
 
     def _resolve_season(
         self,

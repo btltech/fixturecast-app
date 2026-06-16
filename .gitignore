@@ -27,6 +27,20 @@ logs/
 # Runtime log files
 *.log
 backtest_run_*.log
+backend-logs*.txt
+
+# Backup / scratch files (should never be committed)
+*.bak
+*.orig
+*~
+
+# Secrets — never commit. API keys load from environment (.env), see SECURITY.md.
+.env
+.env.*
+!.env.example
+!.env.twitter.example
+secrets.json
+.secrets-to-scrub
 
 # Test output artifacts
 test_og_image.png

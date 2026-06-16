@@ -750,17 +750,15 @@ class PredictionDB:
 
                     # Update Smart Markets flags if qualification found
                     if smart_market_ou or smart_market_btts:
-                        with get_db() as conn2:
-                            cursor2 = conn2.cursor()
-                            ph2 = "%s" if USE_POSTGRES else "?"
-                            cursor2.execute(
-                                f"""
-                                UPDATE predictions
-                                SET smart_market_ou = {ph2}, smart_market_btts = {ph2}
-                                WHERE fixture_id = {ph2}
-                                """,
-                                (smart_market_ou, smart_market_btts, fixture_id),
-                            )
+                        ph2 = "%s" if USE_POSTGRES else "?"
+                        cursor.execute(
+                            f"""
+                            UPDATE predictions
+                            SET smart_market_ou = {ph2}, smart_market_btts = {ph2}
+                            WHERE fixture_id = {ph2}
+                            """,
+                            (smart_market_ou, smart_market_btts, fixture_id),
+                        )
                 except Exception as e:
                     # Don't fail entire prediction save if Smart Markets tagging fails
                     print(f"Warning: Smart Markets auto-tagging failed: {e}")

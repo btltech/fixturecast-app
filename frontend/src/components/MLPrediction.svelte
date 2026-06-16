@@ -35,6 +35,20 @@
 
     $: confidenceLevel = confidence ? confidence.confidence_level : null;
 
+    // Extended over/under ladder (coherent, from the Dixon-Coles matrix)
+    $: over05Pct = prediction.over05_prob != null ? (prediction.over05_prob * 100).toFixed(1) : null;
+    $: over45Pct = prediction.over45_prob != null ? (prediction.over45_prob * 100).toFixed(1) : null;
+
+    // Prediction-quality status (set by the backend cold-start gate).
+    // - cold_start: genuinely blind (no team data AND no market) -> insufficient data.
+    // - low_model_confidence: weak team data BUT a market line exists -> market-based pick.
+    // - abstain (without the above): base confidence fell below threshold.
+    $: coldStart = prediction.cold_start === true;
+    $: coldStartReason = prediction.cold_start_reason || null;
+    $: lowModelConfidence = prediction.low_model_confidence === true;
+    $: modelConfidenceNote = prediction.model_confidence_note || null;
+    $: lowConfidenceOnly = prediction.abstain === true && !coldStart && !lowModelConfidence;
+
     function getConfidenceLabelKey() {
         if (!confidenceLevel) return "mlPrediction.confidencePending";
         if (confidenceLevel === "very_high") return "mlPrediction.confidenceVeryHigh";
@@ -139,6 +153,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Prediction-quality notice -->
+    {#if coldStart}
+        <div class="quality-notice insufficient" role="note">
+            <span class="qn-icon" aria-hidden="true">⚠️</span>
+            <div class="qn-text">
+                <strong>Insufficient data for a reliable pick</strong>
+                <span>{coldStartReason || "We don't have enough team history for this fixture yet."}</span>
+            </div>
+        </div>
+    {:else if lowModelConfidence}
+        <div class="quality-notice market-based" role="note">
+            <span class="qn-icon" aria-hidden="true">📊</span>
+            <div class="qn-text">
+                <strong>Market-based pick</strong>
+                <span>{modelConfidenceNote || "Limited team data — this prediction leans on the betting market rather than model edge."}</span>
+            </div>
+        </div>
+    {:else if lowConfidenceOnly}
+        <div class="quality-notice low-confidence" role="note">
+            <span class="qn-icon" aria-hidden="true">🔍</span>
+            <div class="qn-text">
+                <strong>Low confidence</strong>
+                <span>Signals are split — treat this as low conviction.</span>
+            </div>
+        </div>
+    {/if}
 
     <!-- Main Prediction -->
     <div class="prediction-main">
@@ -385,6 +426,53 @@
         display: flex;
         flex-direction: column;
         gap: 20px;
+    }
+
+    /* Prediction-quality notice banner */
+    .quality-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 0 16px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        font-size: 0.85rem;
+        line-height: 1.35;
+    }
+    .quality-notice .qn-icon {
+        font-size: 1rem;
+        line-height: 1.2;
+        flex-shrink: 0;
+    }
+    .quality-notice .qn-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .quality-notice .qn-text strong {
+        font-weight: 600;
+    }
+    .quality-notice .qn-text span {
+        opacity: 0.85;
+    }
+    /* Genuinely blind — no team data and no market */
+    .quality-notice.insufficient {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+    /* Weak team data but a market line exists — pick is valid, just not model edge */
+    .quality-notice.market-based {
+        background: rgba(6, 182, 212, 0.1);
+        border-color: rgba(6, 182, 212, 0.3);
+        color: #67e8f9;
+    }
+    /* Base confidence fell below threshold */
+    .quality-notice.low-confidence {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #fcd34d;
     }
 
     @media (min-width: 640px) {
