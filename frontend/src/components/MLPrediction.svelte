@@ -23,10 +23,12 @@
     $: btts2ndHalfPct = (prediction.btts_2nd_half_prob * 100).toFixed(1);
 
     // Asian Handicap
-    $: ahMinus05Pct = (prediction.home_ah_minus_05 * 100).toFixed(1);
-    $: ahMinus10Pct = (prediction.home_ah_minus_10 * 100).toFixed(1);
-    $: ahPlus05Pct = (prediction.home_ah_plus_05 * 100).toFixed(1);
-    $: ahPlus10Pct = (prediction.home_ah_plus_10 * 100).toFixed(1);
+    $: ahMinus15Pct = prediction.home_ah_minus_15 != null ? (prediction.home_ah_minus_15 * 100).toFixed(1) : null;
+    $: ahMinus10Pct = prediction.home_ah_minus_10 != null ? (prediction.home_ah_minus_10 * 100).toFixed(1) : null;
+    $: ahMinus05Pct = prediction.home_ah_minus_05 != null ? (prediction.home_ah_minus_05 * 100).toFixed(1) : null;
+    $: ahPlus05Pct = prediction.home_ah_plus_05 != null ? (prediction.home_ah_plus_05 * 100).toFixed(1) : null;
+    $: ahPlus10Pct = prediction.home_ah_plus_10 != null ? (prediction.home_ah_plus_10 * 100).toFixed(1) : null;
+    $: ahPlus15Pct = prediction.home_ah_plus_15 != null ? (prediction.home_ah_plus_15 * 100).toFixed(1) : null;
 
     // Confidence / intervals (if backend provides them)
     $: confidence = prediction.confidence_intervals
@@ -37,7 +39,9 @@
 
     // Extended over/under ladder (coherent, from the Dixon-Coles matrix)
     $: over05Pct = prediction.over05_prob != null ? (prediction.over05_prob * 100).toFixed(1) : null;
+    $: under05Pct = prediction.under05_prob != null ? (prediction.under05_prob * 100).toFixed(1) : null;
     $: over45Pct = prediction.over45_prob != null ? (prediction.over45_prob * 100).toFixed(1) : null;
+    $: under45Pct = prediction.under45_prob != null ? (prediction.under45_prob * 100).toFixed(1) : null;
 
     // Prediction-quality status (set by the backend cold-start gate).
     // - cold_start: genuinely blind (no team data AND no market) -> insufficient data.
@@ -239,14 +243,20 @@
                 <span class="pill-label">{$_('prediction.btts')}</span>
                 <span class="pill-value">{bttsPct}%</span>
             </div>
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('prediction.over25')}</span>
-                <span class="pill-value">{over25Pct}%</span>
-            </div>
-            <div class="prediction-pill">
-                <span class="pill-label">{$_('prediction.under25')}</span>
-                <span class="pill-value">{under25Pct}%</span>
-            </div>
+
+            <!-- Over/Under 0.5 -->
+            {#if over05Pct !== null}
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.over05', {default: 'Over 0.5 Goals'})}</span>
+                    <span class="pill-value">{over05Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.under05', {default: 'Under 0.5 Goals'})}</span>
+                    <span class="pill-value">{under05Pct}%</span>
+                </div>
+            {/if}
+
+            <!-- Over/Under 1.5 -->
             <div class="prediction-pill">
                 <span class="pill-label">{$_('mlPrediction.over15')}</span>
                 <span class="pill-value">{over15Pct}%</span>
@@ -255,6 +265,18 @@
                 <span class="pill-label">{$_('mlPrediction.under15')}</span>
                 <span class="pill-value">{under15Pct}%</span>
             </div>
+
+            <!-- Over/Under 2.5 -->
+            <div class="prediction-pill">
+                <span class="pill-label">{$_('prediction.over25')}</span>
+                <span class="pill-value">{over25Pct}%</span>
+            </div>
+            <div class="prediction-pill">
+                <span class="pill-label">{$_('prediction.under25')}</span>
+                <span class="pill-value">{under25Pct}%</span>
+            </div>
+
+            <!-- Over/Under 3.5 -->
             <div class="prediction-pill">
                 <span class="pill-label">{$_('mlPrediction.over35')}</span>
                 <span class="pill-value">{over35Pct}%</span>
@@ -263,6 +285,19 @@
                 <span class="pill-label">{$_('mlPrediction.under35')}</span>
                 <span class="pill-value">{under35Pct}%</span>
             </div>
+
+            <!-- Over/Under 4.5 -->
+            {#if over45Pct !== null}
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.over45', {default: 'Over 4.5 Goals'})}</span>
+                    <span class="pill-value">{over45Pct}%</span>
+                </div>
+                <div class="prediction-pill">
+                    <span class="pill-label">{$_('mlPrediction.under45', {default: 'Under 4.5 Goals'})}</span>
+                    <span class="pill-value">{under45Pct}%</span>
+                </div>
+            {/if}
+
             <div class="prediction-pill">
                 <span class="pill-label">{$_('mlPrediction.btts1stHalf')}</span>
                 <span class="pill-value">{btts1stHalfPct}%</span>
@@ -271,17 +306,24 @@
                 <span class="pill-label">{$_('mlPrediction.btts2ndHalf')}</span>
                 <span class="pill-value">{btts2ndHalfPct}%</span>
             </div>
+
             <!-- Asian Handicap Section -->
             <div class="prediction-pill ah-header">
                 <span class="pill-label">🎯 {$_('mlPrediction.asianHandicap')}</span>
             </div>
-            <div class="prediction-pill">
-                <span class="pill-label">AH -0.5</span>
-                <span class="pill-value">{ahMinus05Pct}%</span>
-            </div>
+            {#if ahMinus15Pct !== null}
+                <div class="prediction-pill">
+                    <span class="pill-label">AH -1.5</span>
+                    <span class="pill-value">{ahMinus15Pct}%</span>
+                </div>
+            {/if}
             <div class="prediction-pill">
                 <span class="pill-label">AH -1.0</span>
                 <span class="pill-value">{ahMinus10Pct}%</span>
+            </div>
+            <div class="prediction-pill">
+                <span class="pill-label">AH -0.5</span>
+                <span class="pill-value">{ahMinus05Pct}%</span>
             </div>
             <div class="prediction-pill">
                 <span class="pill-label">AH +0.5</span>
@@ -291,6 +333,12 @@
                 <span class="pill-label">AH +1.0</span>
                 <span class="pill-value">{ahPlus10Pct}%</span>
             </div>
+            {#if ahPlus15Pct !== null}
+                <div class="prediction-pill">
+                    <span class="pill-label">AH +1.5</span>
+                    <span class="pill-value">{ahPlus15Pct}%</span>
+                </div>
+            {/if}
         </div>
 
         {#if reasons.length > 0}
