@@ -243,6 +243,8 @@
     <div class="glass-card p-8 element-enter">
       <div class="flex flex-col md:flex-row items-center gap-8">
         <img
+              loading="lazy"
+              decoding="async"
           src={team.team.logo}
           alt={team.team.name}
           class="w-32 h-32 object-contain"
@@ -627,6 +629,8 @@
           class="flex items-center gap-6 p-4 rounded-lg bg-white/5 border border-white/10"
         >
           <img
+              loading="lazy"
+              decoding="async"
             src={coach.photo}
             alt={coach.name}
             class="w-20 h-20 rounded-full object-cover border-2 border-emerald-400/30"
@@ -864,6 +868,8 @@
               class="flex items-start gap-4 p-4 rounded-lg bg-rose-500/5 border border-rose-500/20 hover:border-rose-500/40 transition-all"
             >
               <img
+              loading="lazy"
+              decoding="async"
                 src={injury.player.photo}
                 alt={injury.player.name}
                 class="w-12 h-12 rounded-full object-cover border-2 border-rose-400/30"
@@ -1029,6 +1035,8 @@
               </div>
               <div class="flex items-center gap-2">
                 <img
+              loading="lazy"
+              decoding="async"
                   src={isHome ? match.teams.away.logo : match.teams.home.logo}
                   alt={isHome ? match.teams.away.name : match.teams.home.name}
                   class="w-8 h-8 object-contain"

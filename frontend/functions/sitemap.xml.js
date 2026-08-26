@@ -128,6 +128,8 @@ async function fetchFixturesForLeague(leagueId) {
             id: f.fixture.id,
             leagueId: f.league.id,
             date: f.fixture.date,
+            homeTeamId: f.teams?.home?.id || null,
+            awayTeamId: f.teams?.away?.id || null,
         }));
     } catch {
         return [];
@@ -181,6 +183,21 @@ function buildSitemapXML(fixtures) {
         xml += `  </url>\n`;
     }
 
+    const seenTeams = new Set();
+    for (const fixture of fixtures) {
+        for (const teamId of [fixture.homeTeamId, fixture.awayTeamId]) {
+            if (!teamId || seenTeams.has(teamId)) continue;
+            seenTeams.add(teamId);
+
+            xml += `  <url>\n`;
+            xml += `    <loc>${APP_URL}/team/${teamId}</loc>\n`;
+            xml += `    <lastmod>${today}</lastmod>\n`;
+            xml += `    <changefreq>daily</changefreq>\n`;
+            xml += `    <priority>0.6</priority>\n`;
+            xml += `  </url>\n`;
+        }
+    }
+
     xml += `</urlset>\n`;
     return xml;
 }
@@ -215,20 +232,43 @@ async function submitIndexNow(fixtures) {
     if (!fixtures.length) return;
 
     // Deduplicate and build URL list (limit to 10,000 per IndexNow spec)
-    const seen = new Set();
+    const seenPredictionIds = new Set();
+    const seenTeamIds = new Set();
     const urlList = [];
     for (const f of fixtures) {
-        if (seen.has(f.id)) continue;
-        seen.add(f.id);
-        urlList.push(`${APP_URL}/prediction/${f.id}?league=${f.leagueId}`);
+        if (!seenPredictionIds.has(f.id)) {
+            seenPredictionIds.add(f.id);
+            urlList.push(`${APP_URL}/prediction/${f.id}?league=${f.leagueId}`);
+        }
+
+        if (!seenTeamIds.has(f.homeTeamId)) {
+            seenTeamIds.add(f.homeTeamId);
+            if (f.homeTeamId) {
+                urlList.push(`${APP_URL}/team/${f.homeTeamId}`);
+            }
+        }
+
+        if (!seenTeamIds.has(f.awayTeamId)) {
+            seenTeamIds.add(f.awayTeamId);
+            if (f.awayTeamId) {
+                urlList.push(`${APP_URL}/team/${f.awayTeamId}`);
+            }
+        }
+
+        if (f.leagueId && LEAGUE_PAGE_IDS.includes(f.leagueId)) {
+            urlList.push(`${APP_URL}/league/${f.leagueId}`);
+        }
+
         if (urlList.length >= 10000) break;
     }
+
+    const dedupedUrlList = Array.from(new Set(urlList)).slice(0, 10000);
 
     const payload = {
         host: "fixturecast.com",
         key: INDEXNOW_KEY,
         keyLocation: `${APP_URL}/${INDEXNOW_KEY}.txt`,
-        urlList,
+        urlList: dedupedUrlList,
     };
 
     try {

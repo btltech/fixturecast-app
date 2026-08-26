@@ -162,7 +162,9 @@
       <!-- League Info -->
       {#if leagueInfo}
         <div class="p-4 border-b border-white/10 flex items-center gap-3">
-          <img src={leagueInfo.logo} alt={leagueInfo.name} class="w-12 h-12" />
+          <img
+              loading="lazy"
+              decoding="async" src={leagueInfo.logo} alt={leagueInfo.name} class="w-12 h-12" />
           <div>
             <h2 class="text-xl font-bold">{leagueInfo.name}</h2>
             <p class="text-sm text-slate-400">
@@ -209,6 +211,8 @@
                     class="flex items-center gap-3 hover:text-accent transition-colors"
                   >
                     <img
+              loading="lazy"
+              decoding="async"
                       src={team.team.logo}
                       alt={team.team.name}
                       class="w-7 h-7 group-hover:scale-110 transition-transform"

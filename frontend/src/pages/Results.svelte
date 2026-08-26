@@ -153,6 +153,8 @@
                 >{match.teams.home.name}</span
               >
               <img
+              loading="lazy"
+              decoding="async"
                 src={match.teams.home.logo}
                 alt={match.teams.home.name}
                 class="w-12 h-12"
@@ -172,6 +174,8 @@
               class="flex items-center gap-3 hover:text-accent transition-colors"
             >
               <img
+              loading="lazy"
+              decoding="async"
                 src={match.teams.away.logo}
                 alt={match.teams.away.name}
                 class="w-12 h-12"

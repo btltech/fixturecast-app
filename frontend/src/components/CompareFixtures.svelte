@@ -165,6 +165,8 @@
                   <div class="flex items-center justify-between mb-4">
                     <div class="flex-1 text-center">
                       <img
+              loading="lazy"
+              decoding="async"
                         src={pred.fixture_details?.teams?.home?.logo}
                         alt=""
                         class="w-12 h-12 mx-auto mb-1"
@@ -176,6 +178,8 @@
                     <div class="px-2 text-slate-500 text-sm">{$_('common.vs')}</div>
                     <div class="flex-1 text-center">
                       <img
+              loading="lazy"
+              decoding="async"
                         src={pred.fixture_details?.teams?.away?.logo}
                         alt=""
                         class="w-12 h-12 mx-auto mb-1"

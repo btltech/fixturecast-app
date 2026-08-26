@@ -1,0 +1,57 @@
+{
+  "total_predictions": 5,
+  "predictions_by_model": {
+    "gbdt": 5,
+    "catboost": 5,
+    "transformer": 5,
+    "lstm": 5,
+    "gnn": 5,
+    "bayesian": 5,
+    "elo": 5,
+    "monte_carlo": 5
+  },
+  "confidence_sums": {
+    "gbdt": 2.7766,
+    "catboost": 2.5156,
+    "transformer": 2.1381,
+    "lstm": 1.9116,
+    "gnn": 1.866,
+    "bayesian": 3.7514000000000003,
+    "elo": 3.1638000000000006,
+    "monte_carlo": 2.142
+  },
+  "confidence_counts": {
+    "gbdt": 5,
+    "catboost": 5,
+    "transformer": 5,
+    "lstm": 5,
+    "gnn": 5,
+    "bayesian": 5,
+    "elo": 5,
+    "monte_carlo": 5
+  },
+  "predictions_log": [
+    {
+      "timestamp": "2025-12-06T23:14:46.415888",
+      "ensemble_confidence": 0.5437
+    },
+    {
+      "timestamp": "2025-12-06T23:14:48.384814",
+      "ensemble_confidence": 0.6031
+    },
+    {
+      "timestamp": "2025-12-06T23:14:50.397609",
+      "ensemble_confidence": 0.5985
+    },
+    {
+      "timestamp": "2025-12-06T23:14:52.334026",
+      "ensemble_confidence": 0.5757
+    },
+    {
+      "timestamp": "2025-12-06T23:14:53.966722",
+      "ensemble_confidence": 0.5233
+    }
+  ],
+  "started_at": "2025-11-25T00:00:00",
+  "last_prediction_at": "2025-12-06T23:14:53.966708"
+}

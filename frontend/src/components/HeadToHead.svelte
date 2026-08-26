@@ -102,6 +102,8 @@
             <!-- Home Team -->
             <div class="flex items-center gap-2 min-w-0">
               <img
+              loading="lazy"
+              decoding="async"
                 src={match.teams.home.logo}
                 alt={match.teams.home.name}
                 class="w-6 h-6 flex-shrink-0"
@@ -135,6 +137,8 @@
                 {match.teams.away.name}
               </span>
               <img
+              loading="lazy"
+              decoding="async"
                 src={match.teams.away.logo}
                 alt={match.teams.away.name}
                 class="w-6 h-6 flex-shrink-0"

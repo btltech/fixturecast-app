@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { _ } from "svelte-i18n";
   import { locale } from "../lib/i18n";
-  import { API_URL } from "../config.js";
+  import { API_URL, ML_API_URL } from "../config.js";
   import { getLeagueSeason } from "../services/season.js";
   import { getLeagueDisplay as leagueDisplay } from "../services/leagues.js";
   import MatchCardSkeleton from "../components/MatchCardSkeleton.svelte";
@@ -11,6 +11,7 @@
   import NotificationSettings from "../components/NotificationSettings.svelte";
   import MatchCountdown from "../components/MatchCountdown.svelte";
   import AccumulatorCard from "../components/AccumulatorCard.svelte";
+  import TodaysQualifiedPicks from "../components/TodaysQualifiedPicks.svelte";
   import SEOHead from "../components/SEOHead.svelte";
   import { generateHomeSEO } from "../services/seoService.js";
 
@@ -37,14 +38,18 @@
 
   let trackRecord = null; // { accuracy (0-1), total } from tracked predictions
 
-  onMount(async () => {
-    await loadTodaysData();
+  onMount(() => {
+    // Fired together rather than chained. These two requests are independent,
+    // and awaiting the fixtures call first meant the track-record stat could
+    // not even begin loading until the slowest request on the page had
+    // finished.
+    loadTodaysData();
     loadTrackRecord();
   });
 
   async function loadTrackRecord() {
     try {
-      const res = await fetch(`${API_URL}/api/feedback/performance`);
+      const res = await fetch(`${ML_API_URL}/api/feedback/performance`);
       if (!res.ok) return;
       const data = await res.json();
       const o = data && data.overall;
@@ -55,6 +60,12 @@
       // best-effort: hero proof stat is optional
     }
   }
+
+  // Was a flat 2000ms between retries, so a cold backend meant up to 4 seconds
+  // of the page deliberately sitting on a spinner before showing anything. 600ms
+  // still gives a warming service room to respond without the user staring at
+  // nothing.
+  const RETRY_DELAY_MS = 600;
 
   async function loadTodaysData(retries = 2) {
     loading = true;
@@ -73,13 +84,13 @@
           matchOfTheDay = todaysMatches[0];
         }
 
-        // If we got an empty response, retry (backend may still be warming up)
+        // If we got an empty response, retry (backend may still be warming up).
         if (todaysMatches.length === 0 && !matchOfTheDay && retries > 0) {
-          await new Promise((r) => setTimeout(r, 2000));
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
           return await loadTodaysData(retries - 1);
         }
       } else if (retries > 0) {
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
         return await loadTodaysData(retries - 1);
       } else {
         error = $_("errors.homeFixturesLoad");
@@ -87,7 +98,7 @@
     } catch (e) {
       console.error("Error loading today's matches:", e);
       if (retries > 0) {
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
         return await loadTodaysData(retries - 1);
       }
       error = $_("errors.homeFixturesLoad");
@@ -162,21 +173,21 @@
         class="font-light text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-5 leading-relaxed"
       >
         AI match predictions across 90+ competitions — with the
-        <Link to="/models" class="text-white font-medium hover:underline">track record</Link>
+        <Link to="/track-record" class="text-emerald-400 font-medium hover:underline">verified track record</Link>
         to back them up.
       </p>
 
-      {#if trackRecord && trackRecord.total >= 50}
-        <div class="flex justify-center mb-6">
-          <Link
-            to="/models"
-            class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm font-medium hover:bg-cyan-500/15 transition-colors"
-          >
-            📊 <span class="text-white font-bold">{(trackRecord.accuracy * 100).toFixed(0)}%</span>
-            accuracy across {trackRecord.total.toLocaleString()} tracked predictions
-          </Link>
-        </div>
-      {/if}
+      <!-- Verified Forward Record Badge -->
+      <div class="flex justify-center mb-6">
+        <Link
+          to="/track-record"
+          class="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-bold hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all hover:scale-105 shadow-lg shadow-emerald-500/10"
+        >
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>See FixtureCast’s verified forward record</span>
+          <span class="text-xs">→</span>
+        </Link>
+      </div>
 
       <div
         class="flex flex-col sm:flex-row justify-center gap-4 sm:gap-5 w-full max-w-lg mx-auto relative z-10"
@@ -327,6 +338,9 @@
       {/if}
     </div>
   </div>
+
+  <!-- Today's Qualified Picks (Canonical Single Source of Truth) -->
+  <TodaysQualifiedPicks />
 
   <!-- Match of the Day Section -->
   {#if loading}
@@ -541,11 +555,15 @@
               </div>
               <div class="space-y-3">
                 <div class="flex items-center gap-3">
-                  <img src={fixture.teams.home.logo} alt={fixture.teams?.home?.name || "Home"} class="w-8 h-8 object-contain" />
+                  <img
+              loading="lazy"
+              decoding="async" src={fixture.teams.home.logo} alt={fixture.teams?.home?.name || "Home"} class="w-8 h-8 object-contain" />
                   <span class="font-medium group-hover:text-white transition-colors">{fixture.teams.home.name}</span>
                 </div>
                 <div class="flex items-center gap-3">
-                  <img src={fixture.teams.away.logo} alt={fixture.teams?.away?.name || "Away"} class="w-8 h-8 object-contain" />
+                  <img
+              loading="lazy"
+              decoding="async" src={fixture.teams.away.logo} alt={fixture.teams?.away?.name || "Away"} class="w-8 h-8 object-contain" />
                   <span class="font-medium group-hover:text-white transition-colors">{fixture.teams.away.name}</span>
                 </div>
               </div>
@@ -621,6 +639,8 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <img
+              loading="lazy"
+              decoding="async"
                     src={fixture.teams.home.logo}
                     alt={fixture.teams?.home?.name || "Home team"}
                     class="w-8 h-8 object-contain"
@@ -634,6 +654,8 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <img
+              loading="lazy"
+              decoding="async"
                     src={fixture.teams.away.logo}
                     alt={fixture.teams?.away?.name || "Away team"}
                     class="w-8 h-8 object-contain"

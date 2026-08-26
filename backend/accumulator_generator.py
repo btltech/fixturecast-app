@@ -6,7 +6,7 @@ Generates 8-fold, 4-fold, and BTTS accumulators based on ML predictions
 import os
 import random
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from .league_catalog import get_featured_league_ids
@@ -341,13 +341,14 @@ class AccumulatorGenerator:
             "away": implied_away / total,
         }
 
-    def _passes_1x2_edge(self, pred: Dict[str, Any]) -> bool:
+    def _passes_1x2_edge(self, pred: Dict[str, Any], is_acca_leg: bool = True, acca_size: Optional[int] = None) -> bool:
+        try:
+            from backend.selection_qualifier import SelectionContext, qualify_selection
+        except ImportError:
+            from selection_qualifier import SelectionContext, qualify_selection
+
         odds_home, odds_draw, odds_away, available = self._extract_1x2_odds(pred)
         if not available:
-            return False
-
-        implied = self._implied_probs_1x2(odds_home, odds_draw, odds_away)
-        if not implied:
             return False
 
         outcome = _normalize_1x2_outcome(pred.get("predicted_outcome"))
@@ -362,22 +363,52 @@ class AccumulatorGenerator:
         if self.exclude_draws and outcome == "draw":
             return False
 
-        model_prob = {
+        market_map = {"home": "home_win", "draw": "draw", "away": "away_win"}
+        market_type = market_map.get(outcome, "home_win")
+        
+        odds_val = odds_home if outcome == "home" else (odds_draw if outcome == "draw" else odds_away)
+        raw_model_prob = {
             "home": _to_float(pred.get("home_win_prob"), 0.0),
             "draw": _to_float(pred.get("draw_prob"), 0.0),
             "away": _to_float(pred.get("away_win_prob"), 0.0),
         }.get(outcome, 0.0)
 
-        edge = float(model_prob) - float(implied[outcome])
+        ctx = SelectionContext(
+            market_type=market_type,
+            raw_probability=float(raw_model_prob),
+            odds=float(odds_val) if odds_val else None,
+            all_odds={
+                "home": float(odds_home or 0),
+                "draw": float(odds_draw or 0),
+                "away": float(odds_away or 0),
+            },
+            league_id=pred.get("league_id"),
+            fixture_id=pred.get("fixture_id"),
+            is_acca_leg=is_acca_leg,
+            acca_size=acca_size,
+        )
 
-        # Persist value signals for selection ranking & UI/debugging.
+        res = qualify_selection(ctx)
+
+        # Persist canonical qualification signals for selection ranking & UI/debugging.
         pred["predicted_outcome"] = outcome
-        pred["implied_prob"] = float(implied[outcome])
-        pred["model_prob"] = float(model_prob)
-        pred["edge"] = float(edge)
-        pred["value_score"] = float(edge) * float(pred.get("odds") or 0.0)
+        pred["implied_prob"] = float(res.implied_probability or 0.0)
+        pred["model_prob"] = float(res.raw_probability)
+        pred["conservative_prob"] = float(res.conservative_probability or 0.0)
+        pred["edge"] = float(res.edge or 0.0)
+        pred["value_score"] = float(res.edge or 0.0) * float(pred.get("odds") or 0.0)
+        pred["qualification_gate"] = res.gate
+        pred["is_qualified"] = res.qualified
 
-        return float(model_prob) > float(implied[outcome]) + self.EDGE_MARGIN
+        # When filtering for acca generation, if conservative prob isn't available (cold start/sparse data),
+        # allow fallback if edge against raw model prob meets margin, but flag it
+        if not res.qualified and res.gate == "insufficient_sample":
+            if res.implied_probability is not None and (res.raw_probability - res.implied_probability) >= self.EDGE_MARGIN:
+                pred["is_qualified"] = False
+                pred["fallback_eligible"] = True
+                return True
+
+        return res.qualified
 
     def _decorate_1x2_pick(self, pred: Dict[str, Any]) -> Dict[str, Any] | None:
         """Normalize outcome labels + ensure odds/selection fields exist for 1X2 picks."""
@@ -417,23 +448,38 @@ class AccumulatorGenerator:
         return pred
 
     def _passes_btts_edge(self, pred: Dict[str, Any], model_prob: float) -> bool:
-        odds_yes, odds_no, available = self._extract_btts_odds(pred)
-        if not available:
-            return False
-        if not odds_yes or not odds_no:
-            return False
         try:
-            implied_yes = 1 / float(odds_yes)
-            implied_no = 1 / float(odds_no)
-        except Exception:
+            from backend.selection_qualifier import SelectionContext, qualify_selection
+        except ImportError:
+            from selection_qualifier import SelectionContext, qualify_selection
+
+        odds_yes, odds_no, available = self._extract_btts_odds(pred)
+        if not available or not odds_yes or not odds_no:
             return False
 
-        total = implied_yes + implied_no
-        if total <= 0:
-            return False
+        ctx = SelectionContext(
+            market_type="btts",
+            raw_probability=float(model_prob),
+            odds=float(odds_yes),
+            all_odds={"yes": float(odds_yes), "no": float(odds_no)},
+            league_id=pred.get("league_id"),
+            fixture_id=pred.get("fixture_id"),
+            is_acca_leg=True,
+            acca_size=4,
+        )
 
-        implied_yes = implied_yes / total
-        return float(model_prob) > float(implied_yes) + self.EDGE_MARGIN
+        res = qualify_selection(ctx)
+        pred["btts_is_qualified"] = res.qualified
+        pred["btts_edge"] = float(res.edge or 0.0)
+        pred["btts_implied"] = float(res.implied_probability or 0.0)
+        pred["btts_conservative_prob"] = float(res.conservative_probability or 0.0)
+
+        # Fallback for sparse calibration data
+        if not res.qualified and res.gate == "insufficient_sample":
+            if res.implied_probability is not None and (res.raw_probability - res.implied_probability) >= self.EDGE_MARGIN:
+                return True
+
+        return res.qualified
 
     def _is_today_or_tomorrow(self, match_date_input) -> bool:
         """Check if match is today or tomorrow"""
@@ -507,13 +553,18 @@ class AccumulatorGenerator:
 
         # Calculate total odds
         total_odds = 1.0
+        all_legs_qualified = True
         for sel in selections:
             odds = sel.get("odds", 1.8)
             total_odds *= odds
+            if not (sel.get("is_qualified") or sel.get("btts_is_qualified")):
+                all_legs_qualified = False
 
         # Standard stake
         stake = 10.0
         potential_return = total_odds * stake
+
+        is_qualified_acca = (len(selections) <= 4) and all_legs_qualified
 
         return {
             "acca_type": acca_type,
@@ -524,6 +575,8 @@ class AccumulatorGenerator:
             "created_at": datetime.now().isoformat(),
             "status": "pending",
             "risk_level": self.RISK_LEVELS.get(acca_type, "medium"),
+            "is_qualified_acca": is_qualified_acca,
+            "qualification_status": "qualified" if is_qualified_acca else "model_exploratory",
         }
 
     def generate_all_daily_accumulators(self, predictions: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -572,9 +625,11 @@ def save_accumulator_to_db(db, accumulator: Dict[str, Any]) -> int:
         stake=accumulator["stake"],
         potential_return=accumulator["potential_return"],
         status=accumulator["status"],
+        is_qualified_acca=1 if accumulator.get("is_qualified_acca") else 0,
+        qualifier_version="v1.0-wilson-market",
     )
 
-    # Insert selections
+    # Insert selections with full qualification evidence
     for sel in accumulator["selections"]:
         db.log_accumulator_selection(
             accumulator_id=acca_id,
@@ -588,6 +643,13 @@ def save_accumulator_to_db(db, accumulator: Dict[str, Any]) -> int:
             selection_value=sel.get("selection_value", sel.get("predicted_outcome")),
             odds=sel["odds"],
             confidence=sel.get("confidence", 0),
+            raw_probability=sel.get("model_prob") or sel.get("confidence"),
+            conservative_probability=sel.get("conservative_prob") or sel.get("btts_conservative_prob"),
+            implied_probability=sel.get("implied_prob") or sel.get("btts_implied"),
+            edge=sel.get("edge") or sel.get("btts_edge"),
+            sample_size=sel.get("sample_size"),
+            hierarchy_level=sel.get("hierarchy_level"),
+            qualifier_version="v1.0-wilson-market",
         )
 
     return acca_id

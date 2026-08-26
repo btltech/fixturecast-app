@@ -82,6 +82,8 @@
               </div>
               {#if item.home_logo}
                 <img
+              loading="lazy"
+              decoding="async"
                   src={item.home_logo}
                   alt={item.home_team}
                   class="w-10 h-10"
@@ -98,6 +100,8 @@
             <div class="text-left flex items-center gap-2">
               {#if item.away_logo}
                 <img
+              loading="lazy"
+              decoding="async"
                   src={item.away_logo}
                   alt={item.away_team}
                   class="w-10 h-10"

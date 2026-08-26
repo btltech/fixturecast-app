@@ -487,7 +487,9 @@
                 : 'bg-accent/20 text-accent border border-accent/30'}"
           >
             {#if league.logo}
-              <img src={league.logo} alt="" class="w-4 h-4" />
+              <img
+              loading="lazy"
+              decoding="async" src={league.logo} alt="" class="w-4 h-4" />
             {/if}
             <span>{league.name}</span>
             {#if round}
@@ -516,6 +518,8 @@
               class="absolute inset-0 bg-accent/20 blur-xl rounded-full opacity-20 group-hover:opacity-40 transition-opacity"
             ></div>
             <img
+              loading="lazy"
+              decoding="async"
               src={data.fixture_details.teams.home.logo}
               alt=""
               class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 object-contain mb-2 md:mb-4 drop-shadow-2xl relative z-10 transform group-hover:scale-110 transition-transform duration-300"
@@ -571,6 +575,8 @@
               class="absolute inset-0 bg-rose-500/20 blur-xl rounded-full opacity-20 group-hover:opacity-40 transition-opacity"
             ></div>
             <img
+              loading="lazy"
+              decoding="async"
               src={data.fixture_details.teams.away.logo}
               alt=""
               class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-32 lg:h-32 object-contain mb-2 md:mb-4 drop-shadow-2xl relative z-10 transform group-hover:scale-110 transition-transform duration-300"

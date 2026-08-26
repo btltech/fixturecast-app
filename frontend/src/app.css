@@ -41,6 +41,20 @@
   }
 }
 
+/*
+  Stops one over-wide element from making the entire page scroll sideways on a
+  phone - the usual cause of a layout that "isn't proportional".
+
+  `clip` rather than `hidden` on purpose: overflow:hidden on an ancestor silently
+  breaks position:sticky, and this app has sticky elements. overflow:clip
+  prevents the sideways scroll without that side effect. The hidden fallback
+  above it only applies on older browsers that do not understand clip.
+*/
+html {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 body {
   @apply font-sans antialiased;
   background-color: var(--bg-primary);
@@ -48,6 +62,9 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   overscroll-behavior: contain;
+  overflow-x: hidden;
+  overflow-x: clip;
+  max-width: 100vw;
 }
 
 /* =====================================================
@@ -131,15 +148,28 @@ body {
 /* =====================================================
    GLASSMORPHISM UTILITIES
    ===================================================== */
+/*
+  PERFORMANCE NOTE — backdrop-filter and mobile scrolling.
+
+  backdrop-filter: blur() forces the browser to re-sample and re-blur everything
+  behind the element on every frame. There are ~139 .glass-card elements in this
+  app, and on mobile Safari that is the dominant cause of scroll jank: each
+  scrolled frame re-blurs every visible card.
+
+  So blur is applied only from 768px up (tablets/desktops, which have the GPU
+  headroom for it). Phones get the same gradient, border, and shadow with the
+  blur omitted. Because the gradient is already 40-60% opaque the visual
+  difference is very small, while the scrolling difference is not.
+*/
 .glass {
-  @apply backdrop-blur-xl border;
+  @apply border;
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
 .glass-card {
-  @apply backdrop-blur-lg border rounded-2xl;
+  @apply border rounded-2xl;
   background: linear-gradient(
     145deg,
     rgba(30, 41, 59, 0.4) 0%,
@@ -154,14 +184,31 @@ body {
     border-color var(--duration-fast) var(--ease-out-soft);
 }
 
-.glass-card:hover {
-  background: linear-gradient(
-    145deg,
-    rgba(30, 41, 59, 0.5) 0%,
-    rgba(15, 23, 42, 0.7) 100%
-  );
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+@media (min-width: 768px) {
+  .glass {
+    @apply backdrop-blur-xl;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-lg;
+  }
+}
+
+/*
+  Hover styles are pointer-only. On touch devices Safari emulates :hover on tap
+  and leaves it stuck on the tapped card, so this both fixes that and avoids
+  paying for the transition on mobile.
+*/
+@media (hover: hover) {
+  .glass-card:hover {
+    background: linear-gradient(
+      145deg,
+      rgba(30, 41, 59, 0.5) 0%,
+      rgba(15, 23, 42, 0.7) 100%
+    );
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+  }
 }
 
 /* =====================================================

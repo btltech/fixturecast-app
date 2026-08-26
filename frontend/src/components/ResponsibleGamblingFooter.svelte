@@ -43,6 +43,19 @@
       </a>
     </div>
 
+    <!-- Track Record and Disclaimers Link -->
+    <div class="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-xs text-slate-400 mb-3">
+      <a href="/track-record" class="text-emerald-400 hover:text-emerald-300 font-medium">Verified Track Record</a>
+      <span>•</span>
+      <a href="/models" class="hover:text-white">AI Model Stats</a>
+      <span>•</span>
+      <a href="/how-it-works" class="hover:text-white">How It Works</a>
+      <span>•</span>
+      <a href="/privacy" class="hover:text-white">Privacy</a>
+      <span>•</span>
+      <a href="/terms" class="hover:text-white">Terms</a>
+    </div>
+
     <!-- Copyright & Attribution -->
     <div class="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 text-[10px] text-slate-600">
       <span>© {currentYear} FixtureCast</span>

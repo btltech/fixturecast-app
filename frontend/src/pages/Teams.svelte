@@ -237,6 +237,8 @@
 
           <div class="relative">
             <img
+              loading="lazy"
+              decoding="async"
               src={item.team.logo}
               alt={item.team.name}
               class="w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-200"

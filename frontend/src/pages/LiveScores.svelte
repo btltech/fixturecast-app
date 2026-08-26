@@ -12,6 +12,8 @@
     liveWinProbabilities,
     leadingOutcome,
   } from "../services/liveWinProbability.js";
+  import { detectScoreChanges } from "../services/liveScoreChanges.js";
+  import { selectUpcoming, kickoffIn } from "../services/liveUpcoming.js";
   import { _ } from "svelte-i18n";
 
   let liveMatches = [];
@@ -23,6 +25,10 @@
   let expandedStats = {}; // fixtureId -> boolean
   let expandedEvents = {}; // fixtureId -> boolean
   let collapsedLeagues = {}; // leagueId -> boolean
+  let prevScores = {}; // fixtureId -> "h-a" snapshot for goal-flash detection
+  let scoreFlash = {}; // fixtureId -> boolean transient highlight on a score change
+  let upcomingToday = []; // today's not-started fixtures for the "starting soon" strip
+  let now = Date.now(); // ticks each second so kick-off countdowns stay live
 
   // Auto-refresh countdown
   let countdown = 30;
@@ -39,8 +45,10 @@
       lastRefresh = new Date();
       countdown = 30;
 
-      // Fetch predictions for all live matches
-      fetchPredictionsForMatches(liveMatches);
+      // Flash any card whose score changed since the last refresh (a goal!).
+      const { next, changed } = detectScoreChanges(prevScores, liveMatches);
+      prevScores = next;
+      for (const id of changed) flashScore(id);
     } catch (err) {
       error = err.message;
     } finally {
@@ -48,38 +56,93 @@
     }
   }
 
-  async function fetchPredictionsForMatches(matches) {
-    for (const match of matches) {
-      const fixtureId = match.fixture.id;
-      // Only fetch if not already cached - predictions don't change during a match
-      if (!predictions[fixtureId] && !loadingPrediction[fixtureId]) {
-        loadingPrediction[fixtureId] = true;
-        try {
-          const season = getLeagueSeason(match.league.id, match.fixture?.date);
-          const res = await fetch(
-            `${ML_API_URL}/api/prediction/${fixtureId}?league=${match.league.id}&season=${season}`,
-          );
-          if (res.ok) {
-            const data = await res.json();
-            predictions[fixtureId] = data.prediction;
-            predictions = { ...predictions };
-          }
-        } catch (e) {
-          // Silently fail for predictions
-        } finally {
-          loadingPrediction[fixtureId] = false;
-        }
-      }
+  function flashScore(fixtureId) {
+    scoreFlash[fixtureId] = true;
+    scoreFlash = { ...scoreFlash };
+    setTimeout(() => {
+      scoreFlash[fixtureId] = false;
+      scoreFlash = { ...scoreFlash };
+    }, 6000);
+  }
+
+  // Today's not-yet-started fixtures, so /live isn't a dead end when nothing
+  // is in play. Best-effort — the strip just hides if this fails.
+  async function fetchUpcomingToday() {
+    try {
+      const res = await fetch(`${API_URL}/api/fixtures/today`);
+      if (!res.ok) return;
+      const data = await res.json();
+      upcomingToday = selectUpcoming(data.response || [], 12);
+    } catch (e) {
+      // optional strip; ignore failures
     }
+  }
+
+  // Lazy-load a single match's prediction — called when its card scrolls into
+  // view, so we don't fire one ML request per live match on every page load.
+  async function ensurePrediction(match) {
+    const fixtureId = match.fixture?.id;
+    if (fixtureId == null) return;
+    if (predictions[fixtureId] || loadingPrediction[fixtureId]) return;
+    loadingPrediction[fixtureId] = true;
+    try {
+      const season = getLeagueSeason(match.league.id, match.fixture?.date);
+      const res = await fetch(
+        `${ML_API_URL}/api/prediction/${fixtureId}?league=${match.league.id}&season=${season}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        predictions[fixtureId] = data.prediction;
+        predictions = { ...predictions };
+      }
+    } catch (e) {
+      // Silently fail for predictions
+    } finally {
+      loadingPrediction[fixtureId] = false;
+    }
+  }
+
+  // Svelte action: run `callback` once, when the node first scrolls into view.
+  function whenVisible(node, callback) {
+    let cb = callback;
+    if (typeof IntersectionObserver === "undefined") {
+      cb && cb(); // SSR / unsupported → just load
+      return { update(next) { cb = next; }, destroy() {} };
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            cb && cb();
+            io.unobserve(node);
+          }
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(node);
+    return {
+      update(next) {
+        cb = next;
+      },
+      destroy() {
+        io.disconnect();
+      },
+    };
   }
 
   onMount(() => {
     fetchLiveScores();
+    fetchUpcomingToday();
     // Refresh every 30 seconds
-    refreshInterval = setInterval(fetchLiveScores, 30000);
-    // Countdown timer
+    refreshInterval = setInterval(() => {
+      fetchLiveScores();
+      fetchUpcomingToday();
+    }, 30000);
+    // Countdown timer (also drives the kick-off countdowns)
     countdownInterval = setInterval(() => {
       countdown = Math.max(0, countdown - 1);
+      now = Date.now();
     }, 1000);
     return () => {
       clearInterval(refreshInterval);
@@ -369,6 +432,62 @@
     </div>
   </div>
 
+  <!-- Starting soon: today's upcoming kick-offs, so /live is never a dead end -->
+  {#if upcomingToday.length > 0}
+    <div class="glass-card p-4 element-enter">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-lg">⏱️</span>
+        <h2 class="font-bold">
+          {$_("live.startingSoon", { default: "Starting soon" })}
+        </h2>
+        <span class="text-xs text-slate-400"
+          >{$_("live.todayLabel", { default: "today" })}</span
+        >
+      </div>
+      <div class="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
+        {#each upcomingToday as m (m.fixture.id)}
+          <Link
+            to="/prediction/{m.fixture.id}?league={m.league.id}"
+            class="flex-shrink-0 w-56 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+          >
+            <div
+              class="flex items-center justify-between text-[11px] text-slate-400 mb-2 gap-2"
+            >
+              <span class="truncate">{m.league.name}</span>
+              <span class="text-accent font-semibold whitespace-nowrap"
+                >{kickoffIn(m.fixture.date, now)}</span
+              >
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <img
+              loading="lazy"
+              decoding="async"
+                src={m.teams.home.logo}
+                alt=""
+                class="w-5 h-5 flex-shrink-0 object-contain"
+              />
+              <span class="text-sm font-medium truncate"
+                >{m.teams.home.name}</span
+              >
+            </div>
+            <div class="flex items-center gap-2">
+              <img
+              loading="lazy"
+              decoding="async"
+                src={m.teams.away.logo}
+                alt=""
+                class="w-5 h-5 flex-shrink-0 object-contain"
+              />
+              <span class="text-sm font-medium truncate"
+                >{m.teams.away.name}</span
+              >
+            </div>
+          </Link>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   {#if loading}
     <div class="glass-card p-12 text-center">
       <div
@@ -445,6 +564,8 @@
           >
             <div class="flex items-center gap-3">
               <img
+              loading="lazy"
+              decoding="async"
                 src={group.league.logo}
                 alt={group.league.name}
                 class="w-8 h-8 object-contain"
@@ -482,7 +603,7 @@
           <!-- Matches in this League -->
           {#if !isCollapsed}
             <div class="divide-y divide-white/10">
-              {#each group.matches as match}
+              {#each group.matches as match (match.fixture.id)}
                 {@const fixtureId = match.fixture.id}
                 {@const status = getStatusBadge(match.fixture.status)}
                 {@const pred = predictions[fixtureId]}
@@ -494,10 +615,13 @@
                 {@const events = match.events || []}
 
                 <div
-                  class="p-4 md:p-6 border-l-4 {status.label === 'HT' ||
-                  status.label === 'BT'
+                  use:whenVisible={() => ensurePrediction(match)}
+                  class="p-4 md:p-6 border-l-4 transition-shadow duration-500 {status.label ===
+                    'HT' || status.label === 'BT'
                     ? 'border-amber-500'
-                    : 'border-red-500'}"
+                    : 'border-red-500'} {scoreFlash[fixtureId]
+                    ? 'ring-2 ring-green-400/70 bg-green-500/5'
+                    : ''}"
                 >
                   <!-- Status Badge Row -->
                   <div class="flex items-center justify-between mb-4">
@@ -581,6 +705,8 @@
                         >{match.teams.home.name}</span
                       >
                       <img
+              loading="lazy"
+              decoding="async"
                         src={match.teams.home.logo}
                         alt={match.teams.home.name}
                         class="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0"
@@ -614,6 +740,13 @@
                               class="absolute inset-0 bg-gradient-to-r from-green-500/10 via-transparent to-red-500/10"
                             ></div>
                           {/if}
+                          {#if scoreFlash[fixtureId]}
+                            <div
+                              class="absolute -top-2 -right-2 z-20 px-1.5 py-0.5 rounded-full bg-green-500 text-white text-[9px] font-extrabold uppercase tracking-wide animate-bounce shadow"
+                            >
+                              ⚽ Goal
+                            </div>
+                          {/if}
                           <span class="relative z-10 tabular-nums"
                             >{homeGoals}</span
                           >
@@ -640,6 +773,8 @@
                       class="flex items-center gap-2 sm:gap-3 hover:text-accent transition-colors order-2 sm:order-none"
                     >
                       <img
+              loading="lazy"
+              decoding="async"
                         src={match.teams.away.logo}
                         alt={match.teams.away.name}
                         class="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0"
@@ -649,6 +784,42 @@
                       >
                     </Link>
                   </div>
+
+                  <!-- Live win-probability bar (in-play: pre-match model + game state) -->
+                  {#if liveSummary}
+                    <div class="mb-4">
+                      <div
+                        class="flex h-1.5 rounded-full overflow-hidden bg-white/5 ring-1 ring-white/10"
+                      >
+                        <div
+                          class="bg-emerald-500"
+                          style="width: {(liveSummary.home * 100).toFixed(1)}%"
+                        ></div>
+                        <div
+                          class="bg-slate-500"
+                          style="width: {(liveSummary.draw * 100).toFixed(1)}%"
+                        ></div>
+                        <div
+                          class="bg-rose-500"
+                          style="width: {(liveSummary.away * 100).toFixed(1)}%"
+                        ></div>
+                      </div>
+                      <div
+                        class="flex justify-between text-[10px] text-slate-400 mt-1"
+                      >
+                        <span class="text-emerald-400 font-semibold"
+                          >{(liveSummary.home * 100).toFixed(0)}%</span
+                        >
+                        <span
+                          >{$_("prediction.draw", { default: "Draw" })}
+                          {(liveSummary.draw * 100).toFixed(0)}%</span
+                        >
+                        <span class="text-rose-400 font-semibold"
+                          >{(liveSummary.away * 100).toFixed(0)}%</span
+                        >
+                      </div>
+                    </div>
+                  {/if}
 
                   <!-- Quick Stats Bar (if available) -->
                   {#if stats && stats.length >= 2}

@@ -33,39 +33,46 @@
   }
 
   onMount(async () => {
-    // Fetch today's matches with predictions
+    // This page previously made six round trips strictly one after another:
+    // today's fixtures, then four predictions fetched ONE AT A TIME inside a
+    // loop, then the accuracy stat. Each prediction is a model inference, so
+    // the loop was the worst part - four inferences queued end to end.
+    //
+    // Now the accuracy stat runs alongside the fixtures request, and the four
+    // predictions are requested together. Total wait goes from the sum of six
+    // requests to roughly the slowest two.
+    //
+    // This is the /picks landing page, so it is the one most likely to be
+    // someone's first impression - worth it being quick.
     try {
+      const accuracyPromise = fetch(`${ML_API_URL}/api/feedback/performance`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
       const res = await fetch(`${API_URL}/api/fixtures/today`);
       if (res.ok) {
         const data = await res.json();
         const matches = data.response || [];
 
-        // Get predictions for first 4 matches
-        const picks = [];
-        for (const match of matches.slice(0, 4)) {
-          try {
+        // Request predictions for the first 4 matches concurrently. allSettled
+        // so one failing fixture drops only its own card.
+        const settled = await Promise.allSettled(
+          matches.slice(0, 4).map(async (match) => {
             const predRes = await fetch(
               `${ML_API_URL}/api/predict?fixture_id=${match.fixture.id}&league_id=${match.league?.id || 39}`,
             );
-            if (predRes.ok) {
-              const pred = await predRes.json();
-              picks.push({
-                match,
-                prediction: pred,
-              });
-            }
-          } catch (e) {
-            // Skip this match
-          }
-        }
-        todaysPicks = picks;
+            if (!predRes.ok) throw new Error(String(predRes.status));
+            return { match, prediction: await predRes.json() };
+          }),
+        );
+
+        // Preserves fixture order, unlike pushing as each request returns.
+        todaysPicks = settled
+          .filter((r) => r.status === "fulfilled")
+          .map((r) => r.value);
       }
 
-      // Fetch accuracy stats
-      const accRes = await fetch(`${ML_API_URL}/api/feedback/performance`);
-      if (accRes.ok) {
-        accuracyStats = await accRes.json();
-      }
+      accuracyStats = (await accuracyPromise) ?? accuracyStats;
     } catch (e) {
       console.error("Error loading picks:", e);
     } finally {
@@ -279,6 +286,8 @@
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                   <img
+              loading="lazy"
+              decoding="async"
                     src={match.teams.home.logo}
                     alt=""
                     class="w-6 h-6 object-contain"
@@ -293,6 +302,8 @@
               </div>
               <div class="flex items-center gap-2 mb-3">
                 <img
+              loading="lazy"
+              decoding="async"
                   src={match.teams.away.logo}
                   alt=""
                   class="w-6 h-6 object-contain"

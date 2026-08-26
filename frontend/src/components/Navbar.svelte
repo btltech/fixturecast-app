@@ -130,7 +130,7 @@
         {$_("nav.predictions")}
       </Link>
 
-      <!-- Accuracy / track record (promoted to top level for trust) -->
+      <!-- Accuracy / models -->
       <Link
         to="/models"
         class="px-4 py-2 rounded-lg text-sm font-medium transition-all {isActive(
@@ -140,6 +140,19 @@
           : 'text-slate-400 hover:text-white hover:bg-white/5'}"
       >
         {$_("nav.accuracy")}
+      </Link>
+
+      <!-- Verified Track Record -->
+      <Link
+        to="/track-record"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 {isActive(
+          '/track-record',
+        )
+          ? 'text-white bg-white/10'
+          : 'text-emerald-400 hover:text-emerald-300 hover:bg-white/5'}"
+      >
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Track Record
       </Link>
 
       <!-- Matches Dropdown -->
@@ -605,6 +618,36 @@
           <span class="font-medium text-slate-200 group-hover:text-white"
             >{$_("nav.modelStats")}</span
           >
+        </Link>
+
+        <Link
+          to="/track-record"
+          on:click={closeMobileMenu}
+          class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 touch-target menu-item group"
+        >
+          <div
+            class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 transition-colors"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              />
+            </svg>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-slate-200 group-hover:text-white"
+              >Track Record</span
+            >
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">VERIFIED</span>
+          </div>
         </Link>
 
         <!-- Admin metrics hidden - access via /admin/metrics directly -->

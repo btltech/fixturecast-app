@@ -60,21 +60,38 @@
         // Check ML API health
         checkMLApi();
 
-        // Load upcoming fixtures from backend
+        // Start the fallback lookup NOW, in parallel, rather than only after the
+        // league fetch comes back empty.
+        //
+        // This page was doing three round trips back to back on a cold start:
+        //   1. fixtures for the saved league  ->  empty (common in the off-season)
+        //   2. /api/fixtures/today           ->  slow, aggregates ~90 competitions
+        //   3. fixtures for the fallback league
+        // Sequentially that adds up to the ~15s load. Firing (2) alongside (1)
+        // means that by the time we know (1) was empty, (2) is usually already
+        // done, so the worst case drops to roughly two round trips instead of
+        // three - and when (1) succeeds, (2) is simply discarded.
+        const todaysFixturesPromise = fetch(`${BACKEND_API}/api/fixtures/today`)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null);
+
         await loadUpcomingMatches();
         // If the saved league has nothing on (e.g. off-season), fall back to a
         // league that actually has matches today so the page is never empty.
-        await ensureLeagueWithFixtures();
+        await ensureLeagueWithFixtures(todaysFixturesPromise);
     });
 
     let triedFixtureFallback = false;
-    async function ensureLeagueWithFixtures() {
+    async function ensureLeagueWithFixtures(todaysFixturesPromise) {
         if (triedFixtureFallback || matches.length > 0) return;
         triedFixtureFallback = true;
         try {
-            const res = await fetch(`${BACKEND_API}/api/fixtures/today`);
-            if (!res.ok) return;
-            const data = await res.json();
+            const data = todaysFixturesPromise
+                ? await todaysFixturesPromise
+                : await fetch(`${BACKEND_API}/api/fixtures/today`)
+                      .then((r) => (r.ok ? r.json() : null))
+                      .catch(() => null);
+            if (!data) return;
             const list = (data && data.response) || [];
             const upcoming = list.find(
                 (f) => ["NS", "TBD"].includes(f?.fixture?.status?.short),

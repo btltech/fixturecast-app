@@ -1,0 +1,657 @@
+class AnalysisLLM:
+    """
+    AI Match Analyst.
+    Generates dynamic insights and narratives based on prediction data.
+    Uses a proprietary AI system for comprehensive match analysis.
+    """
+
+    def analyze(self, prediction, features):
+        """
+        Generate a polished natural language analysis of the match.
+        Returns markdown-formatted analysis with clear sections.
+        """
+        home_name = features.get("home_name", "Home Team")
+        away_name = features.get("away_name", "Away Team")
+
+        home_prob = prediction.get("home_win_prob", 0) * 100
+        away_prob = prediction.get("away_win_prob", 0) * 100
+        draw_prob = prediction.get("draw_prob", 0) * 100
+        score = prediction.get("predicted_scoreline", "N/A")
+        btts_prob = prediction.get("btts_prob", 0) * 100
+        matches_played = features.get("matches_played") or features.get("home_total_matches") or 0
+        # Handle both field names for over 2.5 probability
+        over25_prob = (prediction.get("over25_prob") or prediction.get("over_2_5_prob") or 0) * 100
+
+        # Determine confidence level and favorite
+        max_prob = max(home_prob, away_prob, draw_prob)
+        if max_prob > 70:
+            confidence = "HIGH"
+            confidence_emoji = "🟢"
+        elif max_prob > 55:
+            confidence = "MEDIUM"
+            confidence_emoji = "🟡"
+        else:
+            confidence = "LOW"
+            confidence_emoji = "🔴"
+
+        # Determine favorite - handle close calls
+        margin = abs(home_prob - away_prob)
+        is_toss_up = margin < 5 and max(home_prob, away_prob) > draw_prob
+
+        if home_prob > away_prob and home_prob > draw_prob:
+            favorite = home_name
+            favorite_prob = home_prob
+        elif away_prob > home_prob and away_prob > draw_prob:
+            favorite = away_name
+            favorite_prob = away_prob
+        else:
+            favorite = "Draw"
+            favorite_prob = draw_prob
+        stronger_team = favorite
+        draw_heavy = draw_prob >= 20
+        upset_live = min(home_prob, away_prob) >= 30
+
+        # Build deep analysis sections
+        analysis_points = []
+        analysis_points.extend(self._logic_insights(prediction, features))
+
+        # Model consensus - handle both field names
+        model_breakdown = prediction.get("model_breakdown") or prediction.get(
+            "model_probabilities", {}
+        )
+        model_range_text = None
+        draw_support = 0
+        if model_breakdown:
+            models_favoring_home = 0
+            models_favoring_away = 0
+            model_home_values = []
+            model_away_values = []
+            for m, p in model_breakdown.items():
+                # Handle both key styles: 'home'/'away' and 'home_win'/'away_win'
+                home_p = p.get("home_win", p.get("home", 0))
+                away_p = p.get("away_win", p.get("away", 0))
+                draw_p = p.get("draw", 0)
+                if home_p > away_p and home_p > draw_p:
+                    models_favoring_home += 1
+                elif away_p > home_p and away_p > draw_p:
+                    models_favoring_away += 1
+                elif draw_p >= home_p and draw_p >= away_p:
+                    draw_support += 1
+                model_home_values.append(home_p * 100)
+                model_away_values.append(away_p * 100)
+
+            total_models = len(model_breakdown)
+            if total_models > 0:
+                if models_favoring_home >= total_models * 0.6:
+                    consensus_text = f"⚖️ **AI Consensus:** Majority of our signals lean {home_name}"
+                    if favorite == home_name:
+                        consensus_text += " — aligns with the probability edge."
+                    else:
+                        consensus_text += (
+                            f", while probabilities lean {favorite}. Expect volatility."
+                        )
+                    analysis_points.append(consensus_text)
+                elif models_favoring_away >= total_models * 0.6:
+                    consensus_text = f"⚖️ **AI Consensus:** Majority of our signals lean {away_name}"
+                    if favorite == away_name:
+                        consensus_text += " — aligns with the probability edge."
+                    else:
+                        consensus_text += (
+                            f", while probabilities lean {favorite}. Expect volatility."
+                        )
+                    analysis_points.append(consensus_text)
+                else:
+                    analysis_points.append(
+                        f"⚖️ **AI Consensus:** Signals are split — prediction carries higher uncertainty."
+                    )
+                if model_home_values and model_away_values:
+                    home_min, home_max = min(model_home_values), max(model_home_values)
+                    away_min, away_max = min(model_away_values), max(model_away_values)
+                    # Only show range if there's meaningful spread (> 15%)
+                    if (home_max - home_min > 15) or (away_max - away_min > 15):
+                        model_range_text = (
+                            f"Model spread (min–max across models): {home_name} {home_min:.0f}–{home_max:.0f}% vs "
+                            f"{away_name} {away_min:.0f}–{away_max:.0f}%"
+                        )
+                        if draw_support >= total_models * 0.3:
+                            model_range_text += " · Draw is frequently top-ranked across signals"
+
+        # Competition Context - NEW
+        competition_type = features.get("competition_type", "domestic_league")
+        features.get("competition_name", "")
+        is_knockout = features.get("is_knockout", False)
+        is_two_leg = features.get("is_two_leg", False)
+        is_european = features.get("is_european", False)
+        is_group_stage = features.get("is_group_stage", False)
+        is_neutral_venue = features.get("is_neutral_venue", False)
+
+        if is_european:
+            if is_knockout:
+                if is_two_leg:
+                    analysis_points.append(
+                        "🏆 **European Knockout:** Two-leg tie — expect tactical caution in this first/second leg. "
+                        "Away goals could be crucial if aggregate is close."
+                    )
+                elif is_neutral_venue:
+                    analysis_points.append(
+                        "🏆 **Final:** Neutral venue — no home advantage. "
+                        "One-off knockout drama typically favors pragmatic approaches."
+                    )
+                else:
+                    analysis_points.append(
+                        "🏆 **European Knockout:** High stakes single-leg tie — expect intensity and late drama."
+                    )
+            elif is_group_stage:
+                analysis_points.append(
+                    "🏆 **European Group Stage:** Form from domestic leagues may not fully translate. "
+                    "Teams often rotate or raise their game for European nights."
+                )
+        elif competition_type == "domestic_cup":
+            if is_knockout:
+                analysis_points.append(
+                    "🏆 **Cup Match:** Knockout format — giant killings possible as underdogs raise their game."
+                )
+
+        # Form reliability warning for European competitions
+        home_form_reliability = features.get("home_form_reliability", 1.0)
+        away_form_reliability = features.get("away_form_reliability", 1.0)
+        if home_form_reliability < 1.0 or away_form_reliability < 1.0:
+            analysis_points.append(
+                "⚠️ **Form Caveat:** Domestic form may be less predictive in European competition — "
+                "different intensity and tactical setups."
+            )
+
+        # Elo & League combined
+        home_elo = features.get("home_elo", 0)
+        away_elo = features.get("away_elo", 0)
+        home_rank = features.get("home_rank", 0)
+        away_rank = features.get("away_rank", 0)
+        elo_diff_value = 0
+        if home_elo and away_elo:
+            elo_diff = home_elo - away_elo
+            elo_diff_value = elo_diff
+            if abs(elo_diff) > 50:
+                stronger = home_name if elo_diff > 0 else away_name
+                elo_text = f"📈 **Strength & League:** {home_name} ({home_elo:.0f}) vs {away_name} ({away_elo:.0f}) — {abs(elo_diff):.0f}-point gap"
+                if home_rank and away_rank:
+                    elo_text += f", also reflected in the table ({self._ordinal(home_rank)} vs {self._ordinal(away_rank)})."
+                else:
+                    elo_text += f" in favor of {stronger}."
+                analysis_points.append(elo_text)
+
+        # H2H - FIXED: Explain when H2H suggests draws but model disagrees
+        h2h_home = features.get("h2h_home_wins", 0)
+        h2h_away = features.get("h2h_away_wins", 0)
+        h2h_draws = features.get("h2h_draws", 0)
+        h2h_total = h2h_home + h2h_away + h2h_draws
+        if h2h_total > 0:
+            if h2h_draws >= h2h_total * 0.4:
+                h2h_text = f"📊 **H2H:** {h2h_draws} draws in last {h2h_total} meetings — slight draw tendency worth noting."
+                # FIXED: Add explanation when H2H suggests draws but model keeps draw low
+                if draw_prob < 20:
+                    h2h_text += f" Despite the recent draw pattern, current form and market signals still keep the draw as a secondary outcome ({draw_prob:.0f}%)."
+                analysis_points.append(h2h_text)
+            elif h2h_home > h2h_away:
+                analysis_points.append(
+                    f"📊 **H2H:** {home_name} leads {h2h_home}-{h2h_away} in recent meetings — history on their side."
+                )
+            elif h2h_away > h2h_home:
+                analysis_points.append(
+                    f"📊 **H2H:** {away_name} leads {h2h_away}-{h2h_home} in recent meetings — history favors the visitors."
+                )
+
+        # Tactical matchup - handle missing data gracefully
+        home_goals_for = features.get("home_goals_for_avg", 0) or 1.2  # Use league avg as fallback
+        home_goals_against = features.get("home_goals_against_avg", 0) or 1.2
+        away_goals_for = features.get("away_goals_for_avg", 0) or 1.2
+        away_goals_against = features.get("away_goals_against_avg", 0) or 1.2
+
+        # Only show tactical if we have real data for at least home team
+        if features.get("home_goals_for_avg", 0) > 0:
+            home_style = (
+                "attack-minded"
+                if home_goals_for > 1.5
+                else "balanced" if home_goals_for > 1.0 else "defensive"
+            )
+            away_style = (
+                "attack-minded"
+                if away_goals_for > 1.5
+                else "balanced" if away_goals_for > 1.0 else "defensive"
+            )
+            away_label = away_style
+            if away_goals_for < 1.0 and away_goals_against > 1.5:
+                away_label = "goal-shy and defensively vulnerable"
+            # Only include away style if we have their data
+            if features.get("away_goals_for_avg", 0) > 0:
+                analysis_points.append(
+                    f"⚔️ **Tactical Matchup:** {home_name} ({home_style}, {home_goals_for:.1f} GF / {home_goals_against:.1f} GA) "
+                    f"vs {away_name} ({away_label}, {away_goals_for:.1f} GF / {away_goals_against:.1f} GA)."
+                )
+            else:
+                analysis_points.append(
+                    f"⚔️ **Tactical Matchup:** {home_name} ({home_style}, {home_goals_for:.1f} GF / {home_goals_against:.1f} GA). "
+                    f"{away_name} data limited (newly promoted/new to league). Model uncertainty higher due to limited match sample."
+                )
+
+        # Explain scoreline vs defensive metrics if away GF is low but model gives them a goal
+        try:
+            score_home, score_away = [int(x) for x in str(score).replace("–", "-").split("-")]
+        except Exception:
+            score_home, score_away = None, None
+
+        # Check for Probability vs Score Paradox
+        score_winner = None
+        if score_home is not None and score_away is not None:
+            if score_home > score_away:
+                score_winner = home_name
+            elif score_away > score_home:
+                score_winner = away_name
+
+        prob_winner = None
+        if home_prob > away_prob and home_prob > draw_prob:
+            prob_winner = home_name
+        elif away_prob > home_prob and away_prob > draw_prob:
+            prob_winner = away_name
+
+        if prob_winner and score_winner and prob_winner != score_winner:
+            analysis_points.append(
+                f"⚠️ **Model Divergence:** Probabilities favor {prob_winner}, but the predicted score ({score}) favors {score_winner}. "
+                "The score prediction leans towards current form over historical averages."
+            )
+
+        if (
+            score_home is not None
+            and score_away is not None
+            and score_away >= 1
+            and away_goals_for < 1.1
+            and home_goals_against < 1.0
+        ):
+            analysis_points.append(
+                f"🛡️ **Defensive Note:** {away_name} rarely score more than once, but matchup variability/rotation makes a single concession for {home_name} plausible."
+            )
+        elif (
+            score_home is not None
+            and score_away is not None
+            and score_home >= 2
+            and home_goals_for < 1.3
+            and away_goals_against < 1.0
+        ):
+            analysis_points.append(
+                f"🛡️ **Defensive Note:** Predicted score leans above recent GF/GA — opponent rotation/variance could open the door for extra goals."
+            )
+
+        # Form
+        home_form = features.get("home_points_last10", 0)
+        away_form = features.get("away_points_last10", 0)
+        home_wins_last10 = features.get("home_wins_last10", 0)
+        away_wins_last10 = features.get("away_wins_last10", 0)
+        home_form_last5 = features.get("home_form_last5", features.get("home_points_last5", 0))
+        away_form_last5 = features.get("away_form_last5", features.get("away_points_last5", 0))
+
+        if home_form or away_form:
+            form_diff = home_form - away_form
+            if abs(form_diff) > 5:
+                if form_diff > 0:
+                    analysis_points.append(
+                        f"📈 **Form:** {home_name} flying ({home_wins_last10}W in last 10, {home_form_last5:.0f}pts in last 5). "
+                        f"{away_name} struggling ({away_wins_last10}W in last 10, {away_form_last5:.0f}pts in last 5). Momentum heavily favors hosts."
+                    )
+                else:
+                    analysis_points.append(
+                        f"📈 **Form:** {away_name} in great form ({away_wins_last10}W in last 10, {away_form_last5:.0f}pts in last 5). "
+                        f"{home_name} struggling ({home_wins_last10}W in last 10, {home_form_last5:.0f}pts in last 5). Visitors have momentum."
+                    )
+            else:
+                form_note = "— no clear momentum edge."
+                if abs(elo_diff_value) > 60:
+                    edge_team = home_name if elo_diff_value > 0 else away_name
+                    form_note = (
+                        f"— form is level, but underlying ratings still tilt toward {edge_team}."
+                    )
+                analysis_points.append(f"📈 **Form:** Both sides in similar form {form_note}")
+
+        # Draw / upset signaling
+        if draw_heavy:
+            analysis_points.append(
+                "🔀 **Draw Risk:** Elevated draw probability — outcomes are more volatile than usual."
+            )
+        if upset_live and favorite != "Draw":
+            underdog = away_name if favorite == home_name else home_name
+            analysis_points.append(
+                f"🚩 **Upset Watch:** {underdog} profile as a live underdog in this matchup."
+            )
+
+        # Sample size caution
+        if matches_played and matches_played < 8:
+            analysis_points.append(
+                "ℹ️ **Sample Size:** Limited recent matches — form/goals insights carry extra uncertainty."
+            )
+
+        # ========== NEW ENHANCED INSIGHTS ==========
+
+        # 1. Key Player Dependency
+        home_scorer = features.get("home_top_scorer_name")
+        home_scorer_goals = features.get("home_top_scorer_goals", 0)
+        home_dependency = features.get("home_top_scorer_dependency", 0)
+        home_team_goals = (
+            features.get("home_goals_total") or features.get("home_goals_for_last_10") or 0
+        )
+
+        if (
+            home_scorer
+            and home_dependency > 0.35
+            and home_scorer_goals >= 3
+            and home_team_goals >= 5
+        ):
+            goal_text = "goal" if home_scorer_goals == 1 else "goals"
+            analysis_points.append(
+                f"⭐ **Key Player:** {home_scorer} is crucial for {home_name}, scoring {home_scorer_goals} {goal_text} "
+                f"({home_dependency:.0%} of team total). Stopping him is the key."
+            )
+
+        # 2. Managerial Context
+        home_coach_new = features.get("home_coach_is_new", False)
+        away_coach_new = features.get("away_coach_is_new", False)
+
+        if home_coach_new:
+            days = features.get("home_coach_tenure_days", 0)
+            analysis_points.append(
+                f"👔 **New Manager:** {home_name} have a new coach (appointed {days} days ago). "
+                f"Expect the 'new manager bounce' or potential tactical unpredictability."
+            )
+        elif away_coach_new:
+            days = features.get("away_coach_tenure_days", 0)
+            analysis_points.append(
+                f"👔 **New Manager:** {away_name} have a new coach (appointed {days} days ago). "
+                f"This adds a layer of unpredictability to their setup."
+            )
+
+        # 3. Fatigue / Schedule (if we had date data, but we can use squad rotation proxy)
+        # (Placeholder for future schedule congestion logic)
+
+        # 4. Discipline Issues
+        home_reds = features.get("home_red_cards_last5", 0)
+        away_reds = features.get("away_red_cards_last5", 0)
+        if (home_reds >= 2 or away_reds >= 2) and (
+            features.get("home_cards_per_game", 0) > 2.5
+            or features.get("away_cards_per_game", 0) > 2.5
+        ):
+            hot_team = home_name if home_reds > away_reds else away_name
+            red_count = max(home_reds, away_reds)
+            analysis_points.append(
+                f"⚠️ **Discipline:** {hot_team} have {red_count} red cards in the last 5 — discipline could swing this."
+            )
+
+        # ===========================================        # Top Scorer Analysis
+        home_top_scorer = features.get("home_top_scorer_name")
+        home_top_goals = features.get("home_top_scorer_goals", 0)
+        away_top_scorer = features.get("away_top_scorer_name")
+        away_top_goals = features.get("away_top_scorer_goals", 0)
+        home_dependency = features.get("home_top_scorer_dependency", 0)
+        away_dependency = features.get("away_top_scorer_dependency", 0)
+
+        if home_top_scorer and home_top_goals >= 5:
+            dependency_note = " — high dependency risk" if home_dependency > 0.4 else ""
+            analysis_points.append(
+                f"⚽ **Key Player:** {home_name}'s {home_top_scorer} has {home_top_goals} goals this season{dependency_note}."
+            )
+        if away_top_scorer and away_top_goals >= 5:
+            dependency_note = " — high dependency risk" if away_dependency > 0.4 else ""
+            analysis_points.append(
+                f"⚽ **Key Player:** {away_name}'s {away_top_scorer} has {away_top_goals} goals this season{dependency_note}."
+            )
+
+        # Coach Analysis (new manager effect)
+        home_coach_name = features.get("home_coach_name")
+        away_coach_name = features.get("away_coach_name")
+        home_coach_is_new = features.get("home_coach_is_new", False)
+        away_coach_is_new = features.get("away_coach_is_new", False)
+
+        if home_coach_is_new and home_coach_name:
+            analysis_points.append(
+                f"🆕 **New Manager:** {home_name} under new coach {home_coach_name} — potential bounce effect or teething issues."
+            )
+        if away_coach_is_new and away_coach_name:
+            analysis_points.append(
+                f"🆕 **New Manager:** {away_name} under new coach {away_coach_name} — potential bounce effect or teething issues."
+            )
+
+        # Discipline Analysis
+        home_red_cards = features.get("home_red_cards_last5", 0)
+        away_red_cards = features.get("away_red_cards_last5", 0)
+
+        # Discipline already handled above to avoid duplication
+
+        # Goal Timing Patterns
+        home_late_goals = features.get("home_late_goals_pct", 0)
+        away_late_goals = features.get("away_late_goals_pct", 0)
+        home_conceded_late = features.get("home_conceded_late_pct", 0)
+        away_conceded_late = features.get("away_conceded_late_pct", 0)
+
+        if home_late_goals > 0.3 or away_late_goals > 0.3:
+            late_scorer = home_name if home_late_goals > away_late_goals else away_name
+            late_pct = max(home_late_goals, away_late_goals) * 100
+            analysis_points.append(
+                f"⏱️ **Late Drama:** {late_scorer} scores {late_pct:.0f}% of their goals after 75' — could be a late game to watch."
+            )
+
+        if home_conceded_late > 0.35 or away_conceded_late > 0.35:
+            vulnerable_team = home_name if home_conceded_late > away_conceded_late else away_name
+            late_concede_pct = max(home_conceded_late, away_conceded_late) * 100
+            analysis_points.append(
+                f"⚠️ **Late Vulnerability:** {vulnerable_team} concedes {late_concede_pct:.0f}% of goals after 75' — fitness or concentration issues."
+            )
+
+        # BTTS and Over 2.5 insight - FIXED: Show both Yes/No percentages explicitly
+        btts_yes = btts_prob
+        btts_no = 100 - btts_prob
+        if btts_yes > 60:
+            btts_label = "Likely"
+            btts_insight = "attacking match expected"
+        elif btts_yes > 50:
+            btts_label = "Leaning Yes"
+            btts_insight = "both defenses look penetrable"
+        elif btts_yes > 40:
+            btts_label = "Borderline"
+            btts_insight = "could go either way"
+        elif btts_yes > 25:
+            btts_label = "Leaning No"
+            btts_insight = "one side likely to keep a clean sheet"
+        else:
+            btts_label = "Unlikely"
+            btts_insight = "shutout expected from one or both teams"
+
+        # Over 2.5 - FIXED: Use "Very unlikely" for extreme values
+        if over25_prob > 65:
+            over25_label = "Very likely"
+            over25_insight = "open, high-scoring affair expected"
+        elif over25_prob > 55:
+            over25_label = "Likely"
+            over25_insight = "goals expected in this one"
+        elif over25_prob > 45:
+            over25_label = "Borderline"
+            over25_insight = "could be close either way"
+        elif over25_prob > 30:
+            over25_label = "Unlikely"
+            over25_insight = "tight, low-scoring game expected"
+        elif over25_prob > 15:
+            over25_label = "Very unlikely"
+            over25_insight = "defensive battle anticipated"
+        else:
+            over25_label = "Rare"
+            over25_insight = f"only ~1 in {int(100/max(over25_prob, 1))} matches see 3+ goals in this type of fixture"
+
+        # Build verdict - FIXED: Better confidence framing with upset acknowledgment
+        if confidence == "HIGH":
+            risk_text = "Low risk"
+            bet_suggestion = "High-conviction signal."
+            verdict_intro = f"{favorite} are clear favorites and the data strongly supports this."
+        elif confidence == "MEDIUM":
+            risk_text = "Moderate"
+            bet_suggestion = "Moderate conviction — expect some variance."
+            # FIXED: Acknowledge upset potential
+            underdog = away_name if home_prob > away_prob else home_name
+            verdict_intro = (
+                f"{favorite} have the edge, but {underdog} still carry real upset potential."
+            )
+        else:
+            risk_text = "High"
+            bet_suggestion = "High uncertainty — treat this as low conviction."
+            prob_gap = abs(home_prob - away_prob)
+
+            if favorite == "Draw":
+                verdict_intro = "The data points to a stalemate, with neither side holding a decisive statistical advantage."
+            elif prob_gap < 6:
+                verdict_intro = (
+                    f"A tightly contested affair is expected. {favorite} hold a marginal edge, "
+                    "but the data suggests this could swing either way."
+                )
+            else:
+                verdict_intro = (
+                    f"Slight edge to {favorite}, though high volatility and model disagreement "
+                    "suggest caution is warranted."
+                )
+
+        # Assemble analysis points
+        analysis_section = (
+            "\n\n".join(analysis_points)
+            if analysis_points
+            else "No detailed analysis available for this fixture."
+        )
+
+        confidence_reasons = []
+        if confidence == "LOW":
+            if model_breakdown:
+                confidence_reasons.append("model disagreement")
+            if draw_heavy:
+                confidence_reasons.append("high draw risk")
+            if upset_live:
+                confidence_reasons.append("live underdog profile")
+        elif confidence == "MEDIUM":
+            if model_breakdown:
+                confidence_reasons.append("moderate model split")
+            if draw_heavy:
+                confidence_reasons.append("notable draw risk")
+
+        confidence_line = ""
+        if confidence_reasons:
+            confidence_line = (
+                f"*(Why {confidence.lower()} confidence: {', '.join(confidence_reasons)})*"
+            )
+
+        if model_range_text:
+            analysis_section = model_range_text + "\n\n" + analysis_section
+
+        # Build header line based on toss-up status
+        if is_toss_up:
+            header_line = f"{confidence_emoji} **{confidence} CONFIDENCE** · Too close to call ({home_prob:.0f}% vs {away_prob:.0f}%)"
+        else:
+            if favorite_prob >= 55:
+                edge_phrase = "favored"
+            elif favorite_prob >= 45:
+                edge_phrase = "slight edge"
+            else:
+                edge_phrase = "slight lean"
+            header_line = f"{confidence_emoji} **{confidence} CONFIDENCE** · {favorite} {edge_phrase} ({favorite_prob:.0f}%)"
+
+        analysis = f"""## {home_name} vs {away_name}
+{header_line}
+
+---
+
+### 📊 Prediction Summary
+
+| Outcome | Probability |
+|---------|-------------|
+| {home_name} Win | {home_prob:.1f}% |
+| Draw | {draw_prob:.1f}% |
+| {away_name} Win | {away_prob:.1f}% |
+
+**Predicted Score:** {score}
+**Both teams to score:** {btts_label} — Yes {btts_yes:.0f}% / No {btts_no:.0f}% ({btts_insight})
+**Over 2.5 goals:** {over25_label} ({over25_prob:.0f}%) — {over25_insight}
+
+---
+
+### 🔍 Deep Analysis
+
+{analysis_section}
+
+---
+
+### 🎯 Our Verdict
+
+{verdict_intro} **Risk level: {risk_text}** — {bet_suggestion} {confidence_line}
+
+---
+
+*Analysis by FixtureCast proprietary AI*"""
+
+        return analysis
+
+    def _logic_insights(self, prediction, features):
+        """Lightweight rule-based snippets to humanize the analysis."""
+        lines = []
+
+        home_win_prob = prediction.get("home_win_prob", 0) * 100
+        away_win_prob = prediction.get("away_win_prob", 0) * 100
+        away_xg = prediction.get("away_xg") or features.get("away_expected_goals") or 0
+        home_xg = prediction.get("home_xg") or features.get("home_expected_goals") or 0
+        home_injuries = features.get("home_injuries_total", 0)
+        away_injuries = features.get("away_injuries_total", 0)
+        scoreline = (prediction.get("predicted_scoreline") or "").replace(" ", "")
+
+        home_name = features.get("home_name", "Home Team")
+        away_name = features.get("away_name", "Away Team")
+
+        # Dominance
+        if home_win_prob > 65:
+            lines.append(
+                f"The model sees {home_name} as clear favorites with a {home_win_prob:.0f}% win probability."
+            )
+        elif away_win_prob > 65:
+            lines.append(
+                f"The model sees {away_name} as clear favorites with a {away_win_prob:.0f}% win probability."
+            )
+
+        # xG Analysis
+        if away_xg > home_xg + 0.5:
+            lines.append(
+                f"Underlying metrics favor {away_name}, who consistently generate higher quality chances (xG)."
+            )
+        elif home_xg > away_xg + 0.5:
+            lines.append(
+                f"Underlying metrics favor {home_name}, who consistently generate higher quality chances (xG)."
+            )
+
+        # Injuries
+        if home_injuries >= 3:
+            lines.append(
+                f"{home_name} are dealing with {home_injuries} reported injuries, which may impact squad depth."
+            )
+        if away_injuries >= 3:
+            lines.append(
+                f"{away_name} are dealing with {away_injuries} reported injuries, which may impact squad depth."
+            )
+
+        # Scoreline context
+        if scoreline in {"1-0", "0-1", "1–0", "0–1"}:
+            lines.append(
+                "A tight, defensive battle is anticipated, likely decided by a single goal."
+            )
+        elif scoreline in {"2-2", "3-2", "2-3", "3–3"}:
+            lines.append(
+                "An open, end-to-end game is expected with plenty of scoring opportunities."
+            )
+
+        return lines
+
+    def _ordinal(self, n):
+        """Convert number to ordinal string (1st, 2nd, 3rd, etc.)."""
+        if not n:
+            return "N/A"
+        n = int(n)
+        suffix = ["th", "st", "nd", "rd", "th"][min(n % 10, 4)]
+        if 11 <= (n % 100) <= 13:
+            suffix = "th"
+        return f"{n}{suffix}"

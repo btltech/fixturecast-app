@@ -5,31 +5,11 @@
   import BackToTop from "./BackToTop.svelte";
   import ErrorBoundary from "./ErrorBoundary.svelte";
   import ComparePanel from "./ComparePanel.svelte";
+  import LazyRoute from "./LazyRoute.svelte";
   import CookieConsent from "./CookieConsent.svelte";
   import ResponsibleGamblingFooter from "./ResponsibleGamblingFooter.svelte";
   import Home from "../pages/Home.svelte";
-  import Fixtures from "../pages/Fixtures.svelte";
-  import Prediction from "../pages/Prediction.svelte";
-  import Teams from "../pages/Teams.svelte";
-  import TeamDetail from "../pages/TeamDetail.svelte";
-  import MLPredictions from "../pages/MLPredictions.svelte";
-  import Standings from "../pages/Standings.svelte";
-  import Results from "../pages/Results.svelte";
-  import ModelStats from "../pages/ModelStats.svelte";
-  import AdminMetrics from "../pages/AdminMetrics.svelte";
-  import History from "../pages/History.svelte";
-  import LiveScores from "../pages/LiveScores.svelte";
-  import TodaysFixtures from "../pages/TodaysFixtures.svelte";
-  import Privacy from "../pages/Privacy.svelte";
-  import Terms from "../pages/Terms.svelte";
-  import Cookies from "../pages/Cookies.svelte";
   import LandingPicks from "../pages/LandingPicks.svelte";
-  import DailyAccas from "../pages/DailyAccas.svelte";
-  import SmartMarkets from "../pages/SmartMarkets.svelte";
-  import League from "../pages/League.svelte";
-  import HowItWorks from "../pages/HowItWorks.svelte";
-  import AccaBuilder from "../pages/AccaBuilder.svelte";
-  import NotFound from "../pages/NotFound.svelte";
 
   // Now useLocation works because we're inside Router context
   const location = useLocation();
@@ -45,30 +25,46 @@
     <Navbar />
     <ErrorBoundary>
       <main class="flex-grow container mx-auto p-4">
+        <!--
+          Home stays eagerly imported: it is the most common entry point, and
+          lazy-loading it would add a needless round trip to the page most
+          visitors see first. Every other page is fetched on demand.
+        -->
         <Route path="/" component={Home} />
-        <Route path="/today" component={TodaysFixtures} />
-        <Route path="/fixtures" component={Fixtures} />
-        <Route path="/prediction/:id" component={Prediction} />
-        <Route path="/ai" component={MLPredictions} />
-        <Route path="/predictions" component={MLPredictions} />
-        <Route path="/smart-markets" component={SmartMarkets} />
-        <Route path="/accumulators" component={DailyAccas} />
-        <Route path="/accas" component={DailyAccas} />
-        <Route path="/teams" component={Teams} />
-        <Route path="/team/:id" component={TeamDetail} />
-        <Route path="/league/:id" component={League} />
-        <Route path="/standings" component={Standings} />
-        <Route path="/results" component={Results} />
-        <Route path="/models" component={ModelStats} />
-        <Route path="/admin/metrics" component={AdminMetrics} />
-        <Route path="/history" component={History} />
-        <Route path="/live" component={LiveScores} />
-        <Route path="/privacy" component={Privacy} />
-        <Route path="/terms" component={Terms} />
-        <Route path="/cookies" component={Cookies} />
-        <Route path="/how-it-works" component={HowItWorks} />
-        <Route path="/acca-builder" component={AccaBuilder} />
-        <Route component={NotFound} />
+        <Route path="/today"><LazyRoute load={() => import("../pages/TodayLanding.svelte")} /></Route>
+        <Route path="/today-fixtures"><LazyRoute load={() => import("../pages/TodaysFixtures.svelte")} /></Route>
+        <Route path="/fixtures"><LazyRoute load={() => import("../pages/Fixtures.svelte")} /></Route>
+        <Route path="/prediction/:id" let:params>
+          <LazyRoute load={() => import("../pages/Prediction.svelte")} props={{ id: params.id }} />
+        </Route>
+        <Route path="/match/:id" let:params>
+          <LazyRoute load={() => import("../pages/MatchPreview.svelte")} props={{ id: params.id }} />
+        </Route>
+        <Route path="/ai"><LazyRoute load={() => import("../pages/MLPredictions.svelte")} /></Route>
+        <Route path="/predictions"><LazyRoute load={() => import("../pages/MLPredictions.svelte")} /></Route>
+        <Route path="/smart-markets"><LazyRoute load={() => import("../pages/SmartMarkets.svelte")} /></Route>
+        <Route path="/accumulators"><LazyRoute load={() => import("../pages/DailyAccas.svelte")} /></Route>
+        <Route path="/accas"><LazyRoute load={() => import("../pages/DailyAccas.svelte")} /></Route>
+        <Route path="/teams"><LazyRoute load={() => import("../pages/Teams.svelte")} /></Route>
+        <Route path="/team/:id" let:params>
+          <LazyRoute load={() => import("../pages/TeamDetail.svelte")} props={{ id: params.id }} />
+        </Route>
+        <Route path="/league/:id" let:params>
+          <LazyRoute load={() => import("../pages/League.svelte")} props={{ id: params.id }} />
+        </Route>
+        <Route path="/standings"><LazyRoute load={() => import("../pages/Standings.svelte")} /></Route>
+        <Route path="/results"><LazyRoute load={() => import("../pages/Results.svelte")} /></Route>
+        <Route path="/models"><LazyRoute load={() => import("../pages/ModelStats.svelte")} /></Route>
+        <Route path="/track-record"><LazyRoute load={() => import("../pages/TrackRecord.svelte")} /></Route>
+        <Route path="/admin/metrics"><LazyRoute load={() => import("../pages/AdminMetrics.svelte")} /></Route>
+        <Route path="/history"><LazyRoute load={() => import("../pages/History.svelte")} /></Route>
+        <Route path="/live"><LazyRoute load={() => import("../pages/LiveScores.svelte")} /></Route>
+        <Route path="/privacy"><LazyRoute load={() => import("../pages/Privacy.svelte")} /></Route>
+        <Route path="/terms"><LazyRoute load={() => import("../pages/Terms.svelte")} /></Route>
+        <Route path="/cookies"><LazyRoute load={() => import("../pages/Cookies.svelte")} /></Route>
+        <Route path="/how-it-works"><LazyRoute load={() => import("../pages/HowItWorks.svelte")} /></Route>
+        <Route path="/acca-builder"><LazyRoute load={() => import("../pages/AccaBuilder.svelte")} /></Route>
+        <Route><LazyRoute load={() => import("../pages/NotFound.svelte")} /></Route>
       </main>
     </ErrorBoundary>
 

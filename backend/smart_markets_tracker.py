@@ -8,7 +8,10 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
-from database import USE_POSTGRES, PredictionDB, get_db
+try:
+    from backend.database import USE_POSTGRES, PredictionDB, get_db
+except ImportError:
+    from database import USE_POSTGRES, PredictionDB, get_db
 
 
 class SmartMarketsTracker:
@@ -20,21 +23,29 @@ class SmartMarketsTracker:
     @staticmethod
     def twoWayImplied(oddsA: float, oddsB: float) -> Optional[Dict]:
         """Calculate two-way implied probabilities removing bookmaker margin."""
-        if not oddsA or not oddsB or oddsA <= 1 or oddsB <= 1:
+        try:
+            from backend.selection_qualifier import de_vig_two_way
+        except ImportError:
+            from selection_qualifier import de_vig_two_way
+        devigged = de_vig_two_way(oddsA, oddsB)
+        if not devigged:
             return None
-        impliedA = 1 / oddsA
-        impliedB = 1 / oddsB
-        total = impliedA + impliedB
-        if total <= 0:
-            return None
-        return {"a": impliedA / total, "b": impliedB / total}
+        return {"a": devigged[0], "b": devigged[1]}
 
     @staticmethod
     def tag_smart_market_predictions():
         """
-        Scan all untagged predictions and mark Smart Markets qualifying ones.
+        Scan all untagged predictions and mark Smart Markets qualifying ones
+        using the canonical SelectionQualifier.
         Adds 'smart_market_ou' and 'smart_market_btts' flags.
         """
+        try:
+            from backend.selection_qualifier import SelectionContext, qualify_selection
+            from backend.track_record_service import record_qualified_pick
+        except ImportError:
+            from selection_qualifier import SelectionContext, qualify_selection
+            from track_record_service import record_qualified_pick
+
         SmartMarketsTracker._ensure_columns()
 
         with get_db() as conn:
@@ -45,7 +56,8 @@ class SmartMarketsTracker:
             cursor.execute(
                 f"""
                 SELECT fixture_id, over25_prob, btts_prob,
-                       odds_over_25, odds_under_25, odds_btts_yes, odds_btts_no
+                       odds_over_25, odds_under_25, odds_btts_yes, odds_btts_no,
+                       league_id, league_name, home_team, away_team, match_date
                 FROM predictions
                 WHERE evaluated = 0
                   AND odds_over_25 > 0
@@ -65,6 +77,11 @@ class SmartMarketsTracker:
                     under_odds = row["odds_under_25"] or 0
                     btts_yes_odds = row["odds_btts_yes"] or 0
                     btts_no_odds = row["odds_btts_no"] or 0
+                    league_id = row.get("league_id")
+                    league_name = row.get("league_name")
+                    home_team = row.get("home_team") or "Home"
+                    away_team = row.get("away_team") or "Away"
+                    match_date = row.get("match_date")
                 else:
                     fixture_id = row[0]
                     over25_prob = row[1] or 0
@@ -73,28 +90,67 @@ class SmartMarketsTracker:
                     under_odds = row[4] or 0
                     btts_yes_odds = row[5] or 0
                     btts_no_odds = row[6] or 0
+                    league_id = row[7] if len(row) > 7 else None
+                    league_name = row[8] if len(row) > 8 else "League"
+                    home_team = row[9] if len(row) > 9 else "Home"
+                    away_team = row[10] if len(row) > 10 else "Away"
+                    match_date = row[11] if len(row) > 11 else None
 
-                # Check Over/Under 2.5
-                ou_qualifies = False
-                if over25_prob >= SmartMarketsTracker.CONFIDENCE_THRESHOLD:
-                    implied = SmartMarketsTracker.twoWayImplied(over_odds, under_odds)
-                    if implied:
-                        bookmaker_implied = implied["a"]  # Over probability
-                        edge = over25_prob - bookmaker_implied
-                        if edge >= SmartMarketsTracker.EDGE_MARGIN:
-                            ou_qualifies = True
-                            tagged["ou"] += 1
+                # Check Over/Under 2.5 via canonical qualifier
+                ctx_ou = SelectionContext(
+                    market_type="over25",
+                    raw_probability=over25_prob,
+                    odds=over_odds,
+                    all_odds={"over": over_odds, "under": under_odds},
+                    league_id=league_id,
+                    fixture_id=fixture_id,
+                )
+                res_ou = qualify_selection(ctx_ou)
+                ou_qualifies = res_ou.qualified
+                if ou_qualifies:
+                    tagged["ou"] += 1
+                    record_qualified_pick(
+                        fixture_id=fixture_id,
+                        match_date=match_date,
+                        home_team=home_team,
+                        away_team=away_team,
+                        market_type="over25",
+                        selection_label="Over 2.5 Goals",
+                        odds_at_pick=over_odds,
+                        qualification_result=res_ou,
+                        league_id=league_id,
+                        league_name=league_name,
+                        kind="single",
+                        db_conn=conn,
+                    )
 
-                # Check BTTS
-                btts_qualifies = False
-                if btts_prob >= SmartMarketsTracker.CONFIDENCE_THRESHOLD:
-                    implied = SmartMarketsTracker.twoWayImplied(btts_yes_odds, btts_no_odds)
-                    if implied:
-                        bookmaker_implied = implied["a"]  # BTTS Yes probability
-                        edge = btts_prob - bookmaker_implied
-                        if edge >= SmartMarketsTracker.EDGE_MARGIN:
-                            btts_qualifies = True
-                            tagged["btts"] += 1
+                # Check BTTS via canonical qualifier
+                ctx_btts = SelectionContext(
+                    market_type="btts",
+                    raw_probability=btts_prob,
+                    odds=btts_yes_odds,
+                    all_odds={"yes": btts_yes_odds, "no": btts_no_odds},
+                    league_id=league_id,
+                    fixture_id=fixture_id,
+                )
+                res_btts = qualify_selection(ctx_btts)
+                btts_qualifies = res_btts.qualified
+                if btts_qualifies:
+                    tagged["btts"] += 1
+                    record_qualified_pick(
+                        fixture_id=fixture_id,
+                        match_date=match_date,
+                        home_team=home_team,
+                        away_team=away_team,
+                        market_type="btts",
+                        selection_label="Both Teams to Score",
+                        odds_at_pick=btts_yes_odds,
+                        qualification_result=res_btts,
+                        league_id=league_id,
+                        league_name=league_name,
+                        kind="single",
+                        db_conn=conn,
+                    )
 
                 # Tag in database if qualifies
                 if ou_qualifies or btts_qualifies:

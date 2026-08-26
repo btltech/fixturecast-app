@@ -14,6 +14,7 @@
   let timeBacktestReport = null;
   let marketMetrics = null;  // 3-market accuracy data
   let calibration = null;    // Brier / log-loss / ECE / reliability bins
+  let marketEdge = null;     // model vs de-vigged bookmaker odds
   let loading = true;
   let error = null;
   let apiAvailable = false;
@@ -42,56 +43,64 @@
 
   $: dedupedBacktestHistory = dedupeBacktestHistoryByDate(backtestHistory?.history);
 
+  // These six endpoints are completely independent of one another, but were
+  // being awaited one after the next - so the page took the SUM of six round
+  // trips rather than the slowest one. On a phone against a cold backend that
+  // is the difference between a moment and quite a few seconds.
+  //
+  // allSettled rather than all: one endpoint being unavailable should blank out
+  // its own card, not abort the whole page.
+  // "home_win" is fine in a JSON payload but not in a table a reader is meant
+  // to scan quickly.
+  const OUTCOME_LABELS = {
+    home_win: "Home",
+    draw: "Draw",
+    away_win: "Away",
+  };
+  const outcomeLabel = (o) => OUTCOME_LABELS[o] || o || "—";
+
+  async function getJson(url, options) {
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error(`${res.status} ${url}`);
+    return res.json();
+  }
+
   onMount(async () => {
-    try {
-      // Fetch live model stats
-      const response = await fetch(
-        `${ML_API_URL}/api/model-stats?public=1&ts=${Date.now()}`,
-        { cache: "no-store" },
-      );
-      if (response.ok) {
-        stats = await response.json();
-        apiAvailable = true;
-      } else {
-        apiAvailable = false;
-      }
+    const noStore = { cache: "no-store" };
+    const [
+      statsRes,
+      historyRes,
+      metricsRes,
+      reportRes,
+      calibRes,
+      edgeRes,
+    ] = await Promise.allSettled([
+      getJson(`${ML_API_URL}/api/model-stats?public=1&ts=${Date.now()}`, noStore),
+      getJson(`${BACKEND_API_URL}/api/metrics/backtest-history`),
+      getJson(`${ML_API_URL}/api/metrics/summary`),
+      getJson(`${ML_API_URL}/api/backtest/report`),
+      getJson(`${ML_API_URL}/api/metrics/calibration-report?days=90&ts=${Date.now()}`, noStore),
+      // Model vs bookmaker. Accuracy alone cannot separate a predictive model
+      // from one that merely agrees with the favourite, so this is the number
+      // that actually justifies the site existing.
+      getJson(`${ML_API_URL}/api/metrics/market-edge?ts=${Date.now()}`, noStore),
+    ]);
 
-      // Fetch backtest history
-      const historyResponse = await fetch(
-        `${BACKEND_API_URL}/api/metrics/backtest-history`,
-      );
-      if (historyResponse.ok) {
-        backtestHistory = await historyResponse.json();
-      }
-
-      // Fetch 3-market metrics summary
-      const metricsResponse = await fetch(
-        `${ML_API_URL}/api/metrics/summary`,
-      );
-      if (metricsResponse.ok) {
-        marketMetrics = await metricsResponse.json();
-      }
-
-      // Fetch time-based backtest report (per-league scorecards)
-      const reportResponse = await fetch(`${ML_API_URL}/api/backtest/report`);
-      if (reportResponse.ok) {
-        timeBacktestReport = await reportResponse.json();
-      }
-
-      // Fetch honest scoring + calibration (Brier / log-loss / ECE / reliability)
-      const calibResponse = await fetch(
-        `${ML_API_URL}/api/metrics/calibration-report?days=90&ts=${Date.now()}`,
-        { cache: "no-store" },
-      );
-      if (calibResponse.ok) {
-        const c = await calibResponse.json();
-        if (c && c.available) calibration = c;
-      }
-    } catch (err) {
+    if (statsRes.status === "fulfilled") {
+      stats = statsRes.value;
+      apiAvailable = true;
+    } else {
       apiAvailable = false;
-    } finally {
-      loading = false;
     }
+    if (historyRes.status === "fulfilled") backtestHistory = historyRes.value;
+    if (metricsRes.status === "fulfilled") marketMetrics = metricsRes.value;
+    if (reportRes.status === "fulfilled") timeBacktestReport = reportRes.value;
+    if (calibRes.status === "fulfilled" && calibRes.value?.available) {
+      calibration = calibRes.value;
+    }
+    if (edgeRes.status === "fulfilled") marketEdge = edgeRes.value;
+
+    loading = false;
   });
 </script>
 
@@ -118,6 +127,143 @@
       <p class="mt-4 text-slate-400">{$_('common.loading')}</p>
     </div>
   {:else}
+    <!--
+      Model vs bookmaker. Deliberately the first thing on the page: a raw
+      accuracy figure cannot tell a predictive model apart from one that just
+      agrees with the favourite, so this is the only section that speaks to
+      whether the predictions are worth anything. It is shown even while the
+      dataset is still building, because "we are still measuring" is a more
+      honest headline than a number with nothing to compare it to.
+    -->
+    {#if marketEdge}
+      <div class="glass-card p-6 border border-amber-500/30">
+        <h2 class="text-xl font-bold text-amber-400 mb-1">
+          Do we beat the bookmakers?
+        </h2>
+        <p class="text-slate-400 text-sm mb-4">
+          Being right often is easy — always backing the favourite gets you into the
+          mid-50s. The real test is whether our probabilities are better calibrated
+          than the bookmakers' own, with their margin stripped out.
+        </p>
+
+        {#if marketEdge.status === 'ready'}
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <div class="text-xs text-slate-400 uppercase tracking-wide">Matches scored</div>
+              <div class="text-2xl font-bold">{marketEdge.matches}</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400 uppercase tracking-wide">Our Brier</div>
+              <div class="text-2xl font-bold">{marketEdge.model_brier}</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400 uppercase tracking-wide">Market Brier</div>
+              <div class="text-2xl font-bold">{marketEdge.market_brier}</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-400 uppercase tracking-wide">Our accuracy vs market</div>
+              <div class="text-2xl font-bold">
+                {marketEdge.model_accuracy}% <span class="text-slate-500 text-base">vs {marketEdge.market_accuracy}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="rounded-lg p-4 text-sm {marketEdge.statistically_significant && marketEdge.mean_brier_diff < 0
+              ? 'bg-green-500/10 text-green-300'
+              : 'bg-slate-500/10 text-slate-300'}"
+          >
+            <strong>{marketEdge.verdict}</strong>
+            <p class="text-xs text-slate-400 mt-2">
+              Lower Brier is better. We only claim an edge when the gap is large enough
+              to be unlikely to be chance — currently t = {marketEdge.t_stat}, and we
+              require |t| ≥ 1.96. Published whichever way it falls.
+            </p>
+          </div>
+
+          <!--
+            The auditable part. A summary asks you to take our word for it; this
+            lets anyone check the individual matches - our probability, the
+            bookmaker's price, and what actually happened. Collapsed by default
+            so the summary stays readable, and it renders the losses exactly as
+            plainly as the wins.
+          -->
+          {#if marketEdge.matches_detail?.length}
+            <details class="mt-4 group">
+              <summary
+                class="cursor-pointer select-none text-sm text-cyan-400 hover:text-cyan-300 py-2"
+              >
+                Check the individual matches ({marketEdge.matches_detail.length})
+              </summary>
+
+              <p class="text-xs text-slate-500 mt-1 mb-3">
+                Every match scored, newest first. "Ours" and "Book" are the outcome each
+                gave the highest chance to, recorded before kickoff.
+                {#if marketEdge.matches_detail_truncated}
+                  Showing the most recent {marketEdge.matches_detail.length}.
+                {/if}
+              </p>
+
+              <div class="overflow-x-auto -mx-2 px-2">
+                <table class="w-full text-xs min-w-[520px]">
+                  <thead class="text-slate-400 border-b border-white/10">
+                    <tr>
+                      <th class="text-left py-2 pr-2 font-medium">Match</th>
+                      <th class="text-left py-2 px-2 font-medium">Result</th>
+                      <th class="text-left py-2 px-2 font-medium">Ours</th>
+                      <th class="text-left py-2 px-2 font-medium">Book</th>
+                      <th class="text-right py-2 pl-2 font-medium">Closer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each marketEdge.matches_detail as m}
+                      <tr class="border-b border-white/5">
+                        <td class="py-2 pr-2">
+                          <span class="text-slate-200">{m.home} v {m.away}</span>
+                          {#if m.kickoff}
+                            <span class="block text-slate-500"
+                              >{new Date(m.kickoff).toLocaleDateString()}</span
+                            >
+                          {/if}
+                        </td>
+                        <td class="py-2 px-2 text-slate-300">{outcomeLabel(m.outcome)}</td>
+                        <td class="py-2 px-2 {m.model_correct ? 'text-green-400' : 'text-slate-500'}">
+                          {outcomeLabel(m.model_pick)}
+                        </td>
+                        <td class="py-2 px-2 {m.market_correct ? 'text-green-400' : 'text-slate-500'}">
+                          {outcomeLabel(m.market_pick)}
+                        </td>
+                        <td
+                          class="py-2 pl-2 text-right {m.brier_diff < 0
+                            ? 'text-green-400'
+                            : 'text-amber-400'}"
+                        >
+                          {m.brier_diff < 0 ? "us" : "book"}
+                        </td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          {/if}
+        {:else}
+          <div class="rounded-lg p-4 bg-slate-500/10 text-slate-300 text-sm">
+            <strong>Still collecting — no claim yet.</strong>
+            <p class="text-xs text-slate-400 mt-2">
+              {marketEdge.matches || 0} matches scored so far.
+              {#if marketEdge.matches_needed}
+                About {marketEdge.matches_needed} more needed before the comparison
+                means anything.
+              {/if}
+              Bookmakers withdraw their prices once a match kicks off, so this can
+              only be built forward from live data — it cannot be backfilled.
+            </p>
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     <!-- Calibration & scoring (honest proper-scoring-rule metrics) -->
     {#if calibration && calibration.one_x_two}
       {@const oxt = calibration.one_x_two}

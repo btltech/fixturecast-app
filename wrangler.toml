@@ -7,10 +7,8 @@
   command = "npm run build"
   cwd = "frontend"
 
-[build.environment]
-  NODE_VERSION = "18"
-
 [vars]
+NODE_VERSION = "18"
 VITE_ML_API_URL = "https://ml.fixturecast.com"
 VITE_API_URL = "https://api.fixturecast.com"
 VITE_BACKEND_API_URL = "https://api.fixturecast.com"

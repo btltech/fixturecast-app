@@ -165,13 +165,17 @@
             <!-- Teams -->
             <div class="flex items-center gap-2 min-w-0 flex-1">
               {#if home?.logo}
-                <img src={home.logo} alt={home.name} class="w-6 h-6 object-contain flex-shrink-0" />
+                <img
+              loading="lazy"
+              decoding="async" src={home.logo} alt={home.name} class="w-6 h-6 object-contain flex-shrink-0" />
               {/if}
               <span class="text-sm text-white truncate">{home?.name}</span>
               <span class="text-xs text-slate-500 flex-shrink-0">{$_("common.vs")}</span>
               <span class="text-sm text-white truncate">{away?.name}</span>
               {#if away?.logo}
-                <img src={away.logo} alt={away.name} class="w-6 h-6 object-contain flex-shrink-0" />
+                <img
+              loading="lazy"
+              decoding="async" src={away.logo} alt={away.name} class="w-6 h-6 object-contain flex-shrink-0" />
               {/if}
             </div>
             <!-- Date / time -->

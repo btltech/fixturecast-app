@@ -19,7 +19,6 @@
   <!-- Performance: DNS Prefetch & Preconnect for external resources -->
   <link rel="dns-prefetch" href="https://api.fixturecast.com" />
   <link rel="dns-prefetch" href="https://media.api-sports.io" />
-  <link rel="dns-prefetch" href="https://ai-assistant-cloudflare.btltech.workers.dev" />
   <link rel="preconnect" href="https://api.fixturecast.com" crossorigin />
   <link rel="preconnect" href="https://media.api-sports.io" crossorigin />
 
@@ -40,14 +39,25 @@
   <meta name="twitter:image" content="https://fixturecast.com/default-og.png" />
 
   <title>FixtureCast - AI Football Predictions</title>
+
+  <!--
+    Cloudflare Web Analytics, manual snippet mode.
+
+    The dashboard is set to "Enable with JS Snippet installation", which means
+    Cloudflare does NOT inject this automatically - it has to live here. Do not
+    switch the dashboard back to automatic while this tag is present, or every
+    page view gets counted twice.
+  -->
+  <script
+    defer
+    src="https://static.cloudflareinsights.com/beacon.min.js"
+    data-cf-beacon='{"token": "280301ebdae24e05b4cea5ac419df7c6"}'
+  ></script>
 </head>
 
 <body>
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
-
-  <!-- AI Chat Widget -->
-  <script src="https://ai-assistant-widgets.pages.dev/fixturecast-widget.js"></script>
 
   <!-- Register Service Worker for PWA -->
   <script>

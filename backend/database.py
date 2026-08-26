@@ -119,12 +119,21 @@ def get_db():
     conn = get_db_connection()
     try:
         yield conn
-        conn.commit()
+        try:
+            conn.commit()
+        except Exception:
+            pass
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 def _get_placeholder():
@@ -193,6 +202,328 @@ def _ensure_prediction_columns(cursor):
         for name, col_type in columns.items():
             if name not in existing:
                 cursor.execute(f"ALTER TABLE predictions ADD COLUMN {name} {col_type}")
+
+
+def _ensure_accumulator_columns(cursor):
+    columns = {
+        "is_qualified_acca": "INTEGER DEFAULT 0",
+        "qualifier_version": "TEXT",
+    }
+    if USE_POSTGRES:
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'accumulators'
+            """
+        )
+        rows = cursor.fetchall()
+        existing = set()
+        for row in rows:
+            if hasattr(row, "keys"):
+                for key in row.keys():
+                    if str(key).lower() == "column_name":
+                        existing.add(row[key])
+                        break
+            elif hasattr(cursor, 'description') and cursor.description:
+                desc = [d[0].lower() for d in cursor.description]
+                if "column_name" in desc:
+                    idx = desc.index("column_name")
+                    existing.add(row[idx])
+
+        for name, col_type in columns.items():
+            if name not in existing:
+                cursor.execute(f"ALTER TABLE accumulators ADD COLUMN {name} {col_type}")
+    else:
+        cursor.execute("PRAGMA table_info(accumulators)")
+        existing = {row["name"] if isinstance(row, dict) else row[1] for row in cursor.fetchall()}
+        for name, col_type in columns.items():
+            if name not in existing:
+                cursor.execute(f"ALTER TABLE accumulators ADD COLUMN {name} {col_type}")
+
+
+def _ensure_accumulator_selection_columns(cursor):
+    columns = {
+        "league_id": "INTEGER",
+        "league_name": "TEXT",
+        "raw_probability": "REAL",
+        "conservative_probability": "REAL",
+        "implied_probability": "REAL",
+        "edge": "REAL",
+        "sample_size": "INTEGER",
+        "hierarchy_level": "TEXT",
+        "qualifier_version": "TEXT",
+    }
+    if USE_POSTGRES:
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'accumulator_selections'
+            """
+        )
+        rows = cursor.fetchall()
+        existing = set()
+        for row in rows:
+            if hasattr(row, "keys"):
+                for key in row.keys():
+                    if str(key).lower() == "column_name":
+                        existing.add(row[key])
+                        break
+            elif hasattr(cursor, 'description') and cursor.description:
+                desc = [d[0].lower() for d in cursor.description]
+                if "column_name" in desc:
+                    idx = desc.index("column_name")
+                    existing.add(row[idx])
+
+        for name, col_type in columns.items():
+            if name not in existing:
+                cursor.execute(f"ALTER TABLE accumulator_selections ADD COLUMN {name} {col_type}")
+    else:
+        cursor.execute("PRAGMA table_info(accumulator_selections)")
+        existing = {row["name"] if isinstance(row, dict) else row[1] for row in cursor.fetchall()}
+        for name, col_type in columns.items():
+            if name not in existing:
+                cursor.execute(f"ALTER TABLE accumulator_selections ADD COLUMN {name} {col_type}")
+
+
+def _ensure_qualified_picks_table(cursor):
+    if USE_POSTGRES:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS qualified_picks (
+                id SERIAL PRIMARY KEY,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fixture_id INTEGER NOT NULL,
+                match_date TIMESTAMP NOT NULL,
+                home_team TEXT NOT NULL,
+                away_team TEXT NOT NULL,
+                league_id INTEGER,
+                league_name TEXT,
+                kind TEXT NOT NULL DEFAULT 'single',
+                market_type TEXT NOT NULL,
+                selection_label TEXT NOT NULL,
+                odds_at_pick REAL NOT NULL,
+                raw_probability REAL NOT NULL,
+                conservative_probability REAL NOT NULL,
+                implied_probability REAL NOT NULL,
+                edge REAL NOT NULL,
+                sample_size INTEGER NOT NULL,
+                hierarchy_level TEXT,
+                stake_units REAL DEFAULT 1.0,
+                qualifier_version TEXT DEFAULT 'v1.0-wilson-market',
+                is_settled INTEGER DEFAULT 0,
+                settled_at TIMESTAMP,
+                result TEXT DEFAULT 'PENDING',
+                unit_pnl REAL,
+                UNIQUE(fixture_id, market_type, kind)
+            )
+            """
+        )
+    else:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS qualified_picks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fixture_id INTEGER NOT NULL,
+                match_date TIMESTAMP NOT NULL,
+                home_team TEXT NOT NULL,
+                away_team TEXT NOT NULL,
+                league_id INTEGER,
+                league_name TEXT,
+                kind TEXT NOT NULL DEFAULT 'single',
+                market_type TEXT NOT NULL,
+                selection_label TEXT NOT NULL,
+                odds_at_pick REAL NOT NULL,
+                raw_probability REAL NOT NULL,
+                conservative_probability REAL NOT NULL,
+                implied_probability REAL NOT NULL,
+                edge REAL NOT NULL,
+                sample_size INTEGER NOT NULL,
+                hierarchy_level TEXT,
+                stake_units REAL DEFAULT 1.0,
+                qualifier_version TEXT DEFAULT 'v1.0-wilson-market',
+                is_settled INTEGER DEFAULT 0,
+                settled_at TIMESTAMP,
+                result TEXT DEFAULT 'PENDING',
+                unit_pnl REAL,
+                UNIQUE(fixture_id, market_type, kind)
+            )
+            """
+        )
+
+
+def _ensure_daily_featured_picks_table(cursor):
+    if USE_POSTGRES:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS daily_featured_picks (
+                id SERIAL PRIMARY KEY,
+                date DATE NOT NULL,
+                kind TEXT NOT NULL DEFAULT 'single',
+                qualified_pick_id INTEGER,
+                accumulator_id INTEGER,
+                fixture_id INTEGER,
+                selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'selected',
+                UNIQUE(date, kind)
+            )
+            """
+        )
+        # Check column migration
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'daily_featured_picks'
+            """
+        )
+        rows = cursor.fetchall()
+        existing = set()
+        for row in rows:
+            if hasattr(row, "keys"):
+                for key in row.keys():
+                    if str(key).lower() == "column_name":
+                        existing.add(row[key])
+                        break
+            elif hasattr(cursor, 'description') and cursor.description:
+                desc = [d[0].lower() for d in cursor.description]
+                if "column_name" in desc:
+                    idx = desc.index("column_name")
+                    existing.add(row[idx])
+        if "accumulator_id" not in existing:
+            cursor.execute("ALTER TABLE daily_featured_picks ADD COLUMN accumulator_id INTEGER")
+        try:
+            cursor.execute("ALTER TABLE daily_featured_picks ALTER COLUMN qualified_pick_id DROP NOT NULL")
+        except Exception:
+            pass
+        try:
+            cursor.execute("ALTER TABLE daily_featured_picks ALTER COLUMN fixture_id DROP NOT NULL")
+        except Exception:
+            pass
+        try:
+            cursor.execute("ALTER TABLE daily_featured_picks ALTER COLUMN accumulator_id DROP NOT NULL")
+        except Exception:
+            pass
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_featured_date_kind ON daily_featured_picks(date, kind)"
+        )
+    else:
+        cursor.execute("PRAGMA table_info(daily_featured_picks)")
+        columns_info = cursor.fetchall()
+        if columns_info:
+            notnull_q = False
+            for col in columns_info:
+                c_name = col["name"] if isinstance(col, dict) or hasattr(col, "keys") else col[1]
+                c_notnull = col["notnull"] if isinstance(col, dict) or hasattr(col, "keys") else col[3]
+                if c_name == "qualified_pick_id" and c_notnull == 1:
+                    notnull_q = True
+                    break
+            if notnull_q:
+                cursor.execute("ALTER TABLE daily_featured_picks RENAME TO daily_featured_picks_old")
+                cursor.execute(
+                    """
+                    CREATE TABLE daily_featured_picks (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        date DATE NOT NULL,
+                        kind TEXT NOT NULL DEFAULT 'single',
+                        qualified_pick_id INTEGER,
+                        accumulator_id INTEGER,
+                        fixture_id INTEGER,
+                        selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        status TEXT DEFAULT 'selected',
+                        UNIQUE(date, kind)
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO daily_featured_picks (id, date, kind, qualified_pick_id, fixture_id, selected_at, status)
+                    SELECT id, date, kind, qualified_pick_id, fixture_id, selected_at, status FROM daily_featured_picks_old
+                    """
+                )
+                cursor.execute("DROP TABLE daily_featured_picks_old")
+        else:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS daily_featured_picks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date DATE NOT NULL,
+                    kind TEXT NOT NULL DEFAULT 'single',
+                    qualified_pick_id INTEGER,
+                    accumulator_id INTEGER,
+                    fixture_id INTEGER,
+                    selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT DEFAULT 'selected',
+                    UNIQUE(date, kind)
+                )
+                """
+            )
+
+        cursor.execute("PRAGMA table_info(daily_featured_picks)")
+        existing = {row["name"] if isinstance(row, dict) else row[1] for row in cursor.fetchall()}
+        if "accumulator_id" not in existing:
+            cursor.execute("ALTER TABLE daily_featured_picks ADD COLUMN accumulator_id INTEGER")
+def _ensure_analytics_events_table(cursor):
+    if USE_POSTGRES:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS analytics_events (
+                id SERIAL PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                landing_path TEXT,
+                utm_source TEXT,
+                utm_medium TEXT,
+                utm_campaign TEXT,
+                utm_content TEXT,
+                referrer TEXT,
+                is_bot INTEGER DEFAULT 0,
+                ip_hash TEXT,
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_session ON analytics_events(session_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_utm_time ON analytics_events(utm_source, utm_campaign, created_at)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_type_time ON analytics_events(event_type, created_at)"
+        )
+    else:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS analytics_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                landing_path TEXT,
+                utm_source TEXT,
+                utm_medium TEXT,
+                utm_campaign TEXT,
+                utm_content TEXT,
+                referrer TEXT,
+                is_bot INTEGER DEFAULT 0,
+                ip_hash TEXT,
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_session ON analytics_events(session_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_utm_time ON analytics_events(utm_source, utm_campaign, created_at)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_type_time ON analytics_events(event_type, created_at)"
+        )
 
 
 def init_database():
@@ -351,8 +682,12 @@ def init_database():
                 print(f"FATAL DB: Crash on accumulator_selections execution: {e}", flush=True)
                 raise
 
-            # PostgreSQL indexes
-            # Bypassing PostgreSQL indexes generation to prevent cloud timeout
+            _ensure_prediction_columns(cursor)
+            _ensure_accumulator_columns(cursor)
+            _ensure_accumulator_selection_columns(cursor)
+            _ensure_qualified_picks_table(cursor)
+            _ensure_daily_featured_picks_table(cursor)
+            _ensure_analytics_events_table(cursor)
 
             print("✅ PostgreSQL database initialized")
 
@@ -498,6 +833,13 @@ def init_database():
             """
             )
 
+            _ensure_prediction_columns(cursor)
+            _ensure_accumulator_columns(cursor)
+            _ensure_accumulator_selection_columns(cursor)
+            _ensure_qualified_picks_table(cursor)
+            _ensure_daily_featured_picks_table(cursor)
+            _ensure_analytics_events_table(cursor)
+
             # SQLite indexes
             cursor.execute(
                 "CREATE INDEX IF NOT EXISTS idx_predictions_fixture ON predictions(fixture_id)"
@@ -520,6 +862,12 @@ def init_database():
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_accumulators_date ON accumulators(date)")
             cursor.execute(
                 "CREATE INDEX IF NOT EXISTS idx_acca_selections_acca ON accumulator_selections(accumulator_id)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_qualified_picks_fixture ON qualified_picks(fixture_id)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_qualified_picks_date ON qualified_picks(match_date)"
             )
 
             print(f"✅ SQLite database initialized at {DB_PATH}")
@@ -865,6 +1213,13 @@ class PredictionDB:
                     )
                 )
                 PredictionDB._update_daily_metrics(cursor, match_date)
+
+                # Settle any immutable qualified picks associated with this result
+                try:
+                    from backend.track_record_service import settle_qualified_picks
+                    settle_qualified_picks(db_conn=conn)
+                except Exception:
+                    pass
 
                 return {
                     "fixture_id": fixture_id,
@@ -1349,6 +1704,8 @@ class PredictionDB:
         status: str = "pending",
         result: str = None,
         won: bool = None,
+        is_qualified_acca: int = 0,
+        qualifier_version: str = "v1.0-wilson-market",
     ) -> int:
         """Log a new accumulator bet. Returns accumulator ID."""
         try:
@@ -1360,16 +1717,19 @@ class PredictionDB:
                     cursor.execute(
                         """
                         INSERT INTO accumulators (
-                            date, acca_type, total_odds, stake, potential_return, status, result, won
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            date, acca_type, total_odds, stake, potential_return, status, result, won,
+                            is_qualified_acca, qualifier_version
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (date, acca_type) DO UPDATE SET
                             total_odds = EXCLUDED.total_odds,
                             stake = EXCLUDED.stake,
                             potential_return = EXCLUDED.potential_return,
-                            status = EXCLUDED.status
+                            status = EXCLUDED.status,
+                            is_qualified_acca = EXCLUDED.is_qualified_acca,
+                            qualifier_version = EXCLUDED.qualifier_version
                         RETURNING id
                         """,
-                        (date, acca_type, total_odds, stake, potential_return, status, result, won),
+                        (date, acca_type, total_odds, stake, potential_return, status, result, won, is_qualified_acca, qualifier_version),
                     )
                     result_row = cursor.fetchone()
                     acca_id = result_row["id"] if isinstance(result_row, dict) else result_row[0]
@@ -1377,10 +1737,11 @@ class PredictionDB:
                     cursor.execute(
                         """
                         INSERT OR REPLACE INTO accumulators (
-                            date, acca_type, total_odds, stake, potential_return, status, result, won
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            date, acca_type, total_odds, stake, potential_return, status, result, won,
+                            is_qualified_acca, qualifier_version
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        (date, acca_type, total_odds, stake, potential_return, status, result, won),
+                        (date, acca_type, total_odds, stake, potential_return, status, result, won, is_qualified_acca, qualifier_version),
                     )
                     acca_id = cursor.lastrowid
 
@@ -1404,12 +1765,19 @@ class PredictionDB:
         confidence: float,
         result: str = None,
         won: bool = None,
+        raw_probability: float = None,
+        conservative_probability: float = None,
+        implied_probability: float = None,
+        edge: float = None,
+        sample_size: int = None,
+        hierarchy_level: str = None,
+        qualifier_version: str = "v1.0-wilson-market",
     ) -> bool:
-        """Log an individual selection within an accumulator."""
+        """Log an individual selection within an accumulator with full qualification evidence."""
         try:
             with get_db() as conn:
                 cursor = conn.cursor()
-                ph = _get_placeholder()
+                _ensure_accumulator_selection_columns(cursor)
 
                 if USE_POSTGRES:
                     cursor.execute(
@@ -1417,8 +1785,10 @@ class PredictionDB:
                         INSERT INTO accumulator_selections (
                             accumulator_id, fixture_id, home_team, away_team,
                             league_id, league_name, match_date,
-                            selection_type, selection_value, odds, confidence, result, won
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            selection_type, selection_value, odds, confidence, result, won,
+                            raw_probability, conservative_probability, implied_probability,
+                            edge, sample_size, hierarchy_level, qualifier_version
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             accumulator_id,
@@ -1434,6 +1804,13 @@ class PredictionDB:
                             confidence,
                             result,
                             won,
+                            raw_probability,
+                            conservative_probability,
+                            implied_probability,
+                            edge,
+                            sample_size,
+                            hierarchy_level,
+                            qualifier_version,
                         ),
                     )
                 else:
@@ -1442,8 +1819,10 @@ class PredictionDB:
                         INSERT INTO accumulator_selections (
                             accumulator_id, fixture_id, home_team, away_team,
                             league_id, league_name, match_date,
-                            selection_type, selection_value, odds, confidence, result, won
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            selection_type, selection_value, odds, confidence, result, won,
+                            raw_probability, conservative_probability, implied_probability,
+                            edge, sample_size, hierarchy_level, qualifier_version
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             accumulator_id,
@@ -1459,9 +1838,15 @@ class PredictionDB:
                             confidence,
                             result,
                             won,
+                            raw_probability,
+                            conservative_probability,
+                            implied_probability,
+                            edge,
+                            sample_size,
+                            hierarchy_level,
+                            qualifier_version,
                         ),
                     )
-
                 return True
         except Exception as e:
             print(f"❌ Error logging accumulator selection: {e}")

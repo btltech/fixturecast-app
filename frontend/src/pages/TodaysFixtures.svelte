@@ -282,12 +282,12 @@
       />
       </div>
       <div class="flex gap-2 items-center">
-        <select bind:value={timezoneMode} on:change={handleTimezoneModeChange} class="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm">
+        <select bind:value={timezoneMode} on:change={handleTimezoneModeChange} class="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-base md:text-sm">
           <option value="auto">{$_("todaysFixtures.autoTimezone")}</option>
           <option value="manual">{$_("todaysFixtures.manualTimezone")}</option>
         </select>
         {#if timezoneMode === "manual"}
-          <select bind:value={manualTimezone} on:change={handleManualTimezoneChange} class="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm">
+          <select bind:value={manualTimezone} on:change={handleManualTimezoneChange} class="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-base md:text-sm">
             {#each timezoneOptions as tz}
               <option value={tz}>{tz}</option>
             {/each}
@@ -345,11 +345,15 @@
               </div>
               <div class="space-y-3">
                 <div class="flex items-center gap-3">
-                  <img src={fixture.teams.home.logo} alt={fixture.teams?.home?.name || "Home"} class="w-8 h-8 object-contain" />
+                  <img
+              loading="lazy"
+              decoding="async" src={fixture.teams.home.logo} alt={fixture.teams?.home?.name || "Home"} class="w-8 h-8 object-contain" />
                   <span class="font-medium group-hover:text-white transition-colors">{fixture.teams.home.name}</span>
                 </div>
                 <div class="flex items-center gap-3">
-                  <img src={fixture.teams.away.logo} alt={fixture.teams?.away?.name || "Away"} class="w-8 h-8 object-contain" />
+                  <img
+              loading="lazy"
+              decoding="async" src={fixture.teams.away.logo} alt={fixture.teams?.away?.name || "Away"} class="w-8 h-8 object-contain" />
                   <span class="font-medium group-hover:text-white transition-colors">{fixture.teams.away.name}</span>
                 </div>
               </div>
@@ -518,6 +522,8 @@
                 <!-- Home Team -->
                 <div class="flex-1 text-center">
                   <img
+              loading="lazy"
+              decoding="async"
                     src={fixture.teams.home.logo}
                     alt={fixture.teams.home.name}
                     class="w-12 h-12 mx-auto mb-2"
@@ -535,6 +541,8 @@
                 <!-- Away Team -->
                 <div class="flex-1 text-center">
                   <img
+              loading="lazy"
+              decoding="async"
                     src={fixture.teams.away.logo}
                     alt={fixture.teams.away.name}
                     class="w-12 h-12 mx-auto mb-2"

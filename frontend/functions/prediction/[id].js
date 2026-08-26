@@ -9,87 +9,104 @@
 const BACKEND_API_URL = "https://backend-api-production-7b7d.up.railway.app";
 const APP_URL = "https://fixturecast.com";
 
-// User agents for social media crawlers AND search engine bots
-const CRAWLER_USER_AGENTS = [
-  // Search engines
-  "Googlebot",
-  "Bingbot",
-  "baiduspider",
-  "YandexBot",
-  "DuckDuckBot",
-  "Applebot",
-  // Social media crawlers
-  "facebookexternalhit",
-  "Facebot",
-  "Twitterbot",
-  "LinkedInBot",
-  "WhatsApp",
-  "TelegramBot",
-  "Slackbot",
-  "Discordbot",
-  "Pinterest",
-  "vkShare",
-  "W3C_Validator",
-];
+// NOTE: this Function used to run only for a hard-coded list of crawler user
+// agents, serving everyone else the generic SPA shell. That meant search
+// engines saw different markup to real people, and any sharing app not on the
+// list produced a bare link preview. Meta tags are now built for every visitor.
+// The cost is one backend lookup per page view, bounded by the timeout below,
+// falling back to the plain app if it is slow or fails.
 
-function isCrawler(userAgent) {
-  if (!userAgent) return false;
-  return CRAWLER_USER_AGENTS.some((crawler) =>
-    userAgent.toLowerCase().includes(crawler.toLowerCase()),
-  );
+const FETCH_TIMEOUT_MS = 4000;
+
+/**
+ * Find a fixture by id, searching upcoming fixtures first and then recent
+ * results.
+ *
+ * Why both: /api/fixtures only returns UPCOMING matches. Once a match kicks
+ * off it disappears from that list. Search engines routinely crawl a page days
+ * or weeks after discovering it, i.e. after the match has been played, so an
+ * upcoming-only lookup silently failed for exactly the pages that had been
+ * indexed longest. Those pages then rendered the placeholder title
+ * "Home Team vs Away Team", which is unrankable and duplicated across
+ * thousands of URLs.
+ */
+async function findFixture(fixtureId, leagueId) {
+  const wanted = parseInt(fixtureId);
+  if (!Number.isFinite(wanted)) return null;
+
+  const endpoints = [
+    `${BACKEND_API_URL}/api/fixtures?league=${leagueId}&next=50`,
+    `${BACKEND_API_URL}/api/results?league=${leagueId}&last=50`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const found = data.response?.find((f) => f.fixture.id === wanted);
+      if (found) return found;
+    } catch {
+      // Timeout or network error - try the next endpoint.
+    }
+  }
+
+  return null;
 }
 
 export async function onRequest(context) {
   const { request, params, next } = context;
-  const userAgent = request.headers.get("user-agent") || "";
 
-  // If not a crawler, serve the normal SPA
-  if (!isCrawler(userAgent)) {
-    return next();
-  }
-
-  // Extract fixture ID and league from URL
+  // Extract fixture ID and league from URL.
   const fixtureId = params.id;
   const url = new URL(request.url);
-  const leagueId = url.searchParams.get("league") || "39";
+  // No default league. Guessing "39" (Premier League) meant any link without
+  // a ?league= tag looked the fixture up in the wrong competition, failed, and
+  // fell back to the placeholder title.
+  const leagueParam = url.searchParams.get("league");
 
   try {
-    // Fetch fixture details from backend
-    const fixtureRes = await fetch(
-      `${BACKEND_API_URL}/api/fixtures?league=${leagueId}&next=50`,
-    );
-    let homeTeam = "Home Team";
-    let awayTeam = "Away Team";
-    let leagueName = "Football League";
-    let matchDate = "";
-    let matchDateISO = "";
-    let venueName = "Stadium";
-    let homeLogo = "";
-    let awayLogo = "";
+    const fixture = leagueParam
+      ? await findFixture(fixtureId, leagueParam)
+      : null;
 
-    if (fixtureRes.ok) {
-      const data = await fixtureRes.json();
-      const fixture = data.response?.find(
-        (f) => f.fixture.id === parseInt(fixtureId),
-      );
-      if (fixture) {
-        homeTeam = fixture.teams.home.name;
-        awayTeam = fixture.teams.away.name;
-        leagueName = fixture.league.name;
-        homeLogo = fixture.teams.home.logo || "";
-        awayLogo = fixture.teams.away.logo || "";
-        venueName = fixture.fixture.venue?.name || "Stadium";
-        matchDateISO = fixture.fixture.date;
-        matchDate = new Date(fixture.fixture.date).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        });
-      }
+    // If we cannot identify the match, serve the plain app rather than
+    // inventing a title. A generic page with the site's default title is far
+    // better than thousands of pages all claiming to be "Home Team vs Away
+    // Team".
+    if (!fixture) {
+      return next();
     }
 
-    // Build OG image URL
+    // Every field below comes from the fixture we actually found, so there are
+    // no placeholder values left to leak into the title.
+    const homeTeam = fixture.teams.home.name;
+    const awayTeam = fixture.teams.away.name;
+    const leagueName = fixture.league.name;
+    const homeLogo = fixture.teams.home.logo || "";
+    const awayLogo = fixture.teams.away.logo || "";
+    const venueName = fixture.fixture.venue?.name || "Stadium";
+    const matchDateISO = fixture.fixture.date;
+    const matchDate = new Date(fixture.fixture.date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    // Trust the fixture's own league rather than the query string.
+    const leagueId = fixture.league.id;
+
     const ogImage = `${BACKEND_API_URL}/api/og-image/${fixtureId}?league=${leagueId}`;
+    // The canonical KEEPS ?league=, because there is no per-fixture backend
+    // endpoint - without a league we cannot look the match up, so a bare
+    // /prediction/123 renders no meta tags at all. Pointing the canonical there
+    // would aim search engines at the emptier version of the page.
+    //
+    // What this does fix: leagueId is taken from the fixture itself, so a link
+    // carrying the wrong league (e.g. ?league=99) still emits the one correct
+    // canonical, collapsing those variants into a single indexed URL.
     const pageUrl = `${APP_URL}/prediction/${fixtureId}?league=${leagueId}`;
 
     // Generate title and description
@@ -121,20 +138,11 @@ export async function onRequest(context) {
       competitionCategory: leagueName,
     };
 
-    // Generate HTML with OG meta tags + JSON-LD for crawlers
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+    
+    const metaTags = `
   <meta name="description" content="${description}">
   <meta name="keywords" content="${homeTeam} vs ${awayTeam} prediction, ${leagueName} predictions, football predictions, AI predictions">
-
-  <!-- Canonical URL -->
   <link rel="canonical" href="${pageUrl}">
-
-  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="${pageUrl}">
   <meta property="og:title" content="${title}">
@@ -143,34 +151,61 @@ export async function onRequest(context) {
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:site_name" content="FixtureCast">
-
-  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="${pageUrl}">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
   <meta name="twitter:image" content="${ogImage}">
   <meta name="twitter:site" content="@fixturecast">
+  <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`;
 
-  <!-- JSON-LD Structured Data -->
-  <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+    const response = await next();
+    
+    return new HTMLRewriter()
+      .on("title", {
+        element(e) {
+          e.setInnerContent(title);
+        }
+      })
+      .on("meta[name='description']", {
+        element(e) {
+          e.remove(); // remove default description
+        }
+      })
+      .on("meta[name='keywords']", {
+        element(e) {
+          e.remove(); // remove default keywords
+        }
+      })
+      // The base index.html ships its own og:* and twitter:* tags describing
+      // the site as a whole. We append match-specific ones below, so without
+      // this the page carries TWO of each. Crawlers differ on whether they take
+      // the first or the last, and the site-wide ones come first - which is how
+      // a shared match link ends up previewing as the generic
+      // "FixtureCast - AI Football Predictions" with the default image.
+      // Strip the defaults so only the match-specific tags survive.
+      .on("meta[property^='og:']", {
+        element(e) {
+          e.remove();
+        }
+      })
+      .on("meta[name^='twitter:']", {
+        element(e) {
+          e.remove();
+        }
+      })
+      .on("link[rel='canonical']", {
+        element(e) {
+          e.remove(); // avoid two competing canonical URLs
+        }
+      })
+      .on("head", {
+        element(e) {
+          e.append(metaTags, { html: true });
+        }
+      })
+      .transform(response);
 
-  <!-- Redirect to actual page after a moment (for crawlers that execute JS) -->
-  <meta http-equiv="refresh" content="0; url=${pageUrl}">
-</head>
-<body>
-  <h1>${title}</h1>
-  <p>${description}</p>
-  <p>Redirecting to <a href="${pageUrl}">${pageUrl}</a>...</p>
-</body>
-</html>`;
-
-    return new Response(html, {
-      headers: {
-        "content-type": "text/html;charset=UTF-8",
-        "cache-control": "public, max-age=3600",
-      },
-    });
   } catch (error) {
     // On error, fall back to normal page
     console.error("Error generating OG page:", error);

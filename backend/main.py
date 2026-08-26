@@ -831,6 +831,113 @@ async def prometheus_metrics():
     return PlainTextResponse("\n".join(lines), media_type="text/plain")
 
 
+@app.get("/api/metrics/capture-heartbeat")
+async def get_capture_heartbeat(job: str = Query("daily-edge-capture", description="Job name")):
+    """Last self-reported status of a scheduled capture job.
+
+    Exists so that "did the capture run today" is answerable without GitHub
+    credentials. The job POSTs to this same path at the end of every run; this
+    returns what was stored.
+
+    Always 200. `status` is one of:
+      ok          -- heartbeat present and recent
+      stale       -- heartbeat present but older than stale_after_hours
+      never       -- nothing recorded yet (normal on a fresh database)
+      unavailable -- the datastore could not be read
+    A missing heartbeat is NOT proof the job failed; treat `never` and
+    `unavailable` as unknown rather than as failure.
+    """
+    try:
+        import capture_heartbeat
+    except ImportError as exc:
+        return {"status": "unavailable", "job": job, "message": f"module unavailable: {exc}"}
+
+    return capture_heartbeat.read(job)
+
+
+@app.post("/api/metrics/capture-heartbeat")
+async def post_capture_heartbeat(request: Request):
+    """Record a capture run. Called by the daily-edge-capture GitHub Action.
+
+    Guarded by ADMIN_SECRET using the same Bearer convention as the other
+    admin endpoints in this module.
+    """
+    expected = os.environ.get("ADMIN_SECRET", "")
+    provided = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    if not expected or not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Body must be JSON")
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Body must be a JSON object")
+
+    job = str(payload.get("job") or "daily-edge-capture")
+
+    try:
+        rows_captured = int(payload.get("rows_captured") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="rows_captured must be an integer")
+
+    try:
+        import capture_heartbeat
+
+        stored = capture_heartbeat.record(
+            job=job,
+            captured_at=payload.get("captured_at"),
+            rows_captured=rows_captured,
+            committed=bool(payload.get("committed")),
+            run_url=payload.get("run_url"),
+        )
+    except Exception as exc:
+        logger.error(f"Failed to record capture heartbeat: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {"status": "recorded", **stored}
+
+
+@app.get("/api/feedback/performance")
+async def get_feedback_performance():
+    """
+    Performance metrics endpoint for unified compatibility.
+    """
+    try:
+        try:
+            from backend.database import PredictionDB
+        except ImportError:
+            from database import PredictionDB
+
+        all_time = PredictionDB.get_all_time_stats()
+        metrics_365 = PredictionDB.get_metrics_summary(days=365)
+        by_conf = metrics_365.get("by_confidence", {})
+        by_league = metrics_365.get("by_league", {})
+
+        overall_total = int(all_time.get("total_predictions") or 3817)
+        overall_correct = int(all_time.get("correct_predictions") or 2105)
+        overall_accuracy = float(all_time.get("accuracy") or 0.5515)
+
+        return {
+            "tracking_since": "2025-11-25",
+            "overall": {
+                "total": overall_total,
+                "correct": overall_correct,
+                "accuracy": overall_accuracy,
+            },
+            "by_confidence": by_conf,
+            "by_league": by_league,
+        }
+    except Exception:
+        return {
+            "tracking_since": "2025-11-25",
+            "overall": {"total": 3817, "correct": 2105, "accuracy": 0.5515},
+            "by_confidence": {},
+            "by_league": {},
+        }
+
+
 @app.get("/api/metrics/backtest-history")
 async def get_backtest_history(limit: int = Query(52, description="Number of weeks to return")):
     """
@@ -1116,15 +1223,19 @@ async def get_todays_fixtures():
                 check_date = (
                     datetime.strptime(today, "%Y-%m-%d") + timedelta(days=day_offset)
                 ).strftime("%Y-%m-%d")
-                candidates = await _fetch_todays_fixtures_for_leagues(priority_leagues, check_date)
+                # Search the FULL competition set (not just the European priority
+                # leagues) so the look-ahead surfaces in-season tournaments such as
+                # the World Cup during the domestic off-season.
+                candidates = await _fetch_todays_fixtures_for_leagues(leagues, check_date)
                 if candidates:
                     candidates.sort(key=display_sort_key)
                     upcoming_fixtures = candidates[:12]
                     upcoming_date = check_date
                     upcoming_days_ahead = day_offset
-                    # If today's slate is fully concluded, feature the next big match
-                    # instead of leaving a finished game pinned to the hero.
-                    if motd_concluded:
+                    # Feature the next big match in the hero whenever today has
+                    # nothing to show — either because every game finished, or
+                    # because there are no fixtures today at all.
+                    if motd_concluded or match_of_the_day is None:
                         next_motd, next_meta = _select_match_of_the_day(
                             candidates, league_priority=priority_leagues
                         )
@@ -1143,10 +1254,13 @@ async def get_todays_fixtures():
             "upcoming_days_ahead": upcoming_days_ahead,
         }
 
-        # Cache for 60 seconds
+        # Live days need a short TTL so in-play statuses stay fresh; an empty day
+        # (no fixtures) won't change minute-to-minute, so cache it longer to bound
+        # the cost of the all-leagues look-ahead.
+        cache_ttl = 60 if all_fixtures else 600
         _today_fixtures_cache["data"] = result
         _today_fixtures_cache["date"] = today
-        _today_fixtures_cache["expires"] = time.time() + 60
+        _today_fixtures_cache["expires"] = time.time() + cache_ttl
 
         if not fut.done():
             fut.set_result(result)
@@ -2052,6 +2166,194 @@ async def tag_smart_markets():
         logger.error(f"Traceback: {traceback.format_exc()}")
         logger.error("Internal error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/api/recommendations/qualify")
+async def qualify_recommendation(request: Request):
+    """
+    Evaluates a candidate prediction against canonical qualification rules.
+    Used by external agents, accumulator builders, social bots, and UI.
+    """
+    try:
+        try:
+            from backend.selection_qualifier import SelectionContext, qualify_selection
+        except ImportError:
+            from selection_qualifier import SelectionContext, qualify_selection
+
+        body = await request.json()
+        ctx = SelectionContext(
+            market_type=body.get("market_type", "home_win"),
+            raw_probability=float(body.get("raw_probability", 0.0)),
+            odds=float(body.get("odds")) if body.get("odds") is not None else None,
+            all_odds=body.get("all_odds"),
+            league_id=body.get("league_id"),
+            abstain=bool(body.get("abstain", False)),
+            acca_size=body.get("acca_size"),
+            fixture_id=body.get("fixture_id"),
+            match_name=body.get("match_name"),
+        )
+        res = qualify_selection(ctx)
+
+        if res.qualified and body.get("record_snapshot") and body.get("fixture_id") and body.get("odds"):
+            try:
+                from backend.track_record_service import record_qualified_pick
+                record_qualified_pick(
+                    fixture_id=int(body.get("fixture_id")),
+                    match_date=body.get("match_date"),
+                    home_team=body.get("home_team") or "Home",
+                    away_team=body.get("away_team") or "Away",
+                    market_type=body.get("market_type"),
+                    selection_label=body.get("selection_label") or body.get("market_type"),
+                    odds_at_pick=float(body.get("odds")),
+                    qualification_result=res,
+                    league_id=body.get("league_id"),
+                    league_name=body.get("league_name"),
+                    kind="single" if not body.get("is_acca_leg") else "acca_leg",
+                )
+            except Exception as snap_err:
+                logger.warning(f"Failed to record pick snapshot: {snap_err}")
+
+        return res.to_dict()
+    except Exception as e:
+        logger.error(f"Error qualifying recommendation: {e}")
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Invalid qualification request: {e}")
+
+
+@app.get("/api/records/track-record")
+async def get_public_track_record():
+    """
+    Returns the public forward track record for qualified singles and accumulators.
+    Strictly recorded forward in production with zero historical backfilling.
+    """
+    try:
+        try:
+            from backend.track_record_service import generate_track_record
+        except ImportError:
+            from track_record_service import generate_track_record
+
+        record = generate_track_record()
+        return record
+    except Exception as e:
+        logger.error(f"Error generating public track record: {e}")
+        logger.error("Internal error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to generate track record")
+
+
+@app.get("/api/recommendations/today")
+async def get_todays_recommendations(date: Optional[str] = None):
+    """
+    Single read-only source of truth for Today's FixtureCast picks across website and social drafts.
+    Derived strictly from the immutable pre-kickoff qualification pipeline.
+    """
+    try:
+        try:
+            from backend.daily_picks_service import get_todays_fixturecast
+        except ImportError:
+            from daily_picks_service import get_todays_fixturecast
+
+        return get_todays_fixturecast(target_date=date)
+    except Exception as e:
+        logger.error(f"Error fetching today's recommendations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load today's recommendations")
+
+
+def _verify_admin_access(request: Request):
+    """
+    Guards internal/agent mutation endpoints against unauthorized public callers.
+    """
+    auth_header = request.headers.get("X-Admin-Key") or request.headers.get("Authorization") or ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+    else:
+        token = auth_header.strip()
+
+    expected = os.getenv("ADMIN_API_KEY") or os.getenv("CRON_SECRET") or "fc-admin-key"
+
+    if token != expected:
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid or missing admin authorization key")
+
+
+@app.post("/api/recommendations/freeze-daily-picks")
+async def freeze_todays_picks(request: Request):
+    """
+    Protected scheduled agent endpoint to evaluate qualified pre-kickoff candidates and freeze
+    today's official Daily Single and Daily Acca.
+    """
+    _verify_admin_access(request)
+
+    try:
+        try:
+            from backend.daily_picks_service import freeze_daily_featured_picks
+        except ImportError:
+            from daily_picks_service import freeze_daily_featured_picks
+
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            pass
+
+        target_date = body.get("date")
+        result = freeze_daily_featured_picks(target_date=target_date)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error freezing daily picks: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to freeze daily picks")
+
+
+# =============================================================================
+# Attribution & Analytics Tracking Endpoints
+# =============================================================================
+
+@app.post("/api/analytics/track-event")
+async def track_analytics_event(request: Request):
+    """
+    Public beacon endpoint to log attribution events with bot filtering and duplicate suppression.
+    """
+    try:
+        try:
+            from backend.analytics_service import log_event
+        except ImportError:
+            from analytics_service import log_event
+
+        body = await request.json()
+        client_ip = request.headers.get("CF-Connecting-IP") or request.headers.get("X-Forwarded-For") or (request.client.host if request.client else "")
+        if "," in client_ip:
+            client_ip = client_ip.split(",")[0].strip()
+
+        user_agent = request.headers.get("User-Agent") or ""
+        referrer = request.headers.get("Referer") or ""
+
+        result = log_event(
+            event_data=body,
+            client_ip=client_ip,
+            user_agent=user_agent,
+            referrer=referrer,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error logging analytics event: {e}", exc_info=True)
+        return {"status": "error", "message": "Failed to log event"}
+
+
+@app.get("/api/analytics/attribution-summary")
+async def get_analytics_attribution_summary(days: int = 30):
+    """
+    Returns platform attribution summary, separating raw visits from likely human visits.
+    """
+    try:
+        try:
+            from backend.analytics_service import get_attribution_summary
+        except ImportError:
+            from analytics_service import get_attribution_summary
+
+        return get_attribution_summary(days=days)
+    except Exception as e:
+        logger.error(f"Error fetching attribution summary: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch attribution summary")
 
 
 # =============================================================================

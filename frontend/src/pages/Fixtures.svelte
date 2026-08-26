@@ -996,6 +996,8 @@
                     <!-- Home Team -->
                     <div class="flex-1 text-center">
                       <img
+              loading="lazy"
+              decoding="async"
                         src={fixture.teams.home.logo}
                         alt={fixture.teams.home.name}
                         class="w-12 h-12 mx-auto mb-2"
@@ -1013,6 +1015,8 @@
                     <!-- Away Team -->
                     <div class="flex-1 text-center">
                       <img
+              loading="lazy"
+              decoding="async"
                         src={fixture.teams.away.logo}
                         alt={fixture.teams.away.name}
                         class="w-12 h-12 mx-auto mb-2"
@@ -1193,6 +1197,8 @@
                 <!-- Home Team -->
                 <div class="flex-1 text-center">
                   <img
+              loading="lazy"
+              decoding="async"
                     src={fixture.teams.home.logo}
                     alt={fixture.teams.home.name}
                     class="w-12 h-12 mx-auto mb-2"
@@ -1210,6 +1216,8 @@
                 <!-- Away Team -->
                 <div class="flex-1 text-center">
                   <img
+              loading="lazy"
+              decoding="async"
                     src={fixture.teams.away.logo}
                     alt={fixture.teams.away.name}
                     class="w-12 h-12 mx-auto mb-2"

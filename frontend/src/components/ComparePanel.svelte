@@ -193,14 +193,18 @@
                     <div class="flex flex-col h-full overflow-y-auto pr-1 gap-3">
                       <div class="flex items-center justify-between">
                         <div class="flex-1 text-center">
-                          <img src={pred.fixture_details?.teams?.home?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
+                          <img
+              loading="lazy"
+              decoding="async" src={pred.fixture_details?.teams?.home?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
                           <div class="text-sm font-medium truncate px-1">
                             {pred.fixture_details?.teams?.home?.name || "Home"}
                           </div>
                         </div>
                         <div class="px-2 text-slate-500 text-sm">vs</div>
                         <div class="flex-1 text-center">
-                          <img src={pred.fixture_details?.teams?.away?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
+                          <img
+              loading="lazy"
+              decoding="async" src={pred.fixture_details?.teams?.away?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
                           <div class="text-sm font-medium truncate px-1">
                             {pred.fixture_details?.teams?.away?.name || "Away"}
                           </div>
@@ -309,14 +313,18 @@
                     <div class="flex flex-col h-full overflow-y-auto pr-1 gap-3">
                       <div class="flex items-center justify-between">
                         <div class="flex-1 text-center">
-                          <img src={pred.fixture_details?.teams?.home?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
+                          <img
+              loading="lazy"
+              decoding="async" src={pred.fixture_details?.teams?.home?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
                           <div class="text-sm font-medium truncate px-1">
                             {pred.fixture_details?.teams?.home?.name || "Home"}
                           </div>
                         </div>
                         <div class="px-2 text-slate-500 text-sm">vs</div>
                         <div class="flex-1 text-center">
-                          <img src={pred.fixture_details?.teams?.away?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
+                          <img
+              loading="lazy"
+              decoding="async" src={pred.fixture_details?.teams?.away?.logo} alt="" class="w-12 h-12 mx-auto mb-1" />
                           <div class="text-sm font-medium truncate px-1">
                             {pred.fixture_details?.teams?.away?.name || "Away"}
                           </div>
@@ -483,6 +491,8 @@
                     <div class="flex items-center justify-between">
                       <div class="flex-1 text-center">
                         <img
+              loading="lazy"
+              decoding="async"
                           src={pred.fixture_details?.teams?.home?.logo}
                           alt=""
                           class="w-12 h-12 mx-auto mb-1"
@@ -494,6 +504,8 @@
                       <div class="px-2 text-slate-500 text-sm">vs</div>
                       <div class="flex-1 text-center">
                         <img
+              loading="lazy"
+              decoding="async"
                           src={pred.fixture_details?.teams?.away?.logo}
                           alt=""
                           class="w-12 h-12 mx-auto mb-1"

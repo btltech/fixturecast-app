@@ -43,7 +43,7 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (event.request.method !== "GET") return;
 
-  // Skip API calls - always fetch from network (avoid caching dynamic JSON)
+  // Skip API calls and third-party beacons - always fetch directly from network
   const url = event.request.url;
   if (
     url.includes("/api/") ||
@@ -53,8 +53,8 @@ self.addEventListener("fetch", (event) => {
     url.includes("media.api-sports.io") ||
     url.includes("fonts.googleapis.com") ||
     url.includes("fonts.gstatic.com") ||
-    url.includes("ai-assistant-widgets.pages.dev") ||
-    url.includes("ai-assistant-cloudflare.btltech.workers.dev")
+    url.includes("cloudflareinsights.com") ||
+    url.includes("static.cloudflareinsights.com")
   ) {
     return;
   }
@@ -71,7 +71,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Only cache static assets (JS, CSS, images), not HTML
+        // Only cache successful static assets (JS, CSS, images), not HTML
         if (response.status === 200) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -80,9 +80,10 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       })
-      .catch(() => {
+      .catch(async () => {
         // Fallback to cache for offline support
-        return caches.match(event.request);
+        const cached = await caches.match(event.request);
+        return cached || new Response("", { status: 408, statusText: "Offline" });
       }),
   );
 });

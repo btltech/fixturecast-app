@@ -183,6 +183,8 @@
                 class="flex items-center gap-3 px-3 py-2 hover:bg-white/10 rounded-lg search-item"
               >
                 <img
+              loading="lazy"
+              decoding="async"
                   src={team.team.logo}
                   alt={team.team.name}
                   class="w-8 h-8"
@@ -213,6 +215,8 @@
                 <div class="flex items-center justify-between gap-4">
                   <div class="flex items-center gap-2 flex-1">
                     <img
+              loading="lazy"
+              decoding="async"
                       src={fixture.teams.home.logo}
                       alt={fixture.teams.home.name}
                       class="w-6 h-6"
@@ -223,6 +227,8 @@
                   <div class="flex items-center gap-2 flex-1 justify-end">
                     <span class="text-sm">{fixture.teams.away.name}</span>
                     <img
+              loading="lazy"
+              decoding="async"
                       src={fixture.teams.away.logo}
                       alt={fixture.teams.away.name}
                       class="w-6 h-6"
