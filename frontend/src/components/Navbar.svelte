@@ -6,12 +6,23 @@
   import Logo from "./Logo.svelte";
   import PwaInstallButton from "./PwaInstallButton.svelte";
 
+  import { onDestroy } from "svelte";
   const location = useLocation();
   $: currentPath = $location.pathname;
 
   let mobileMenuOpen = false;
   let matchesDropdownOpen = false;
   let moreDropdownOpen = false;
+
+  $: if ($location) {
+    closeMobileMenu();
+  }
+
+  onDestroy(() => {
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+    }
+  });
 
   function toggleMobileMenu() {
     mobileMenuOpen = !mobileMenuOpen;
@@ -21,7 +32,9 @@
 
   function closeMobileMenu() {
     mobileMenuOpen = false;
-    document.body.style.overflow = "";
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+    }
   }
 
   function isActive(path) {
