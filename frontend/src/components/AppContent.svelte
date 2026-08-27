@@ -8,6 +8,7 @@
   import LazyRoute from "./LazyRoute.svelte";
   import CookieConsent from "./CookieConsent.svelte";
   import ResponsibleGamblingFooter from "./ResponsibleGamblingFooter.svelte";
+  import AskFixtureCastWidget from "./AskFixtureCastWidget.svelte";
   import Home from "../pages/Home.svelte";
   import LandingPicks from "../pages/LandingPicks.svelte";
 
@@ -79,6 +80,9 @@
 
     <!-- Compare Panel (floating) -->
     <ComparePanel />
+
+    <!-- Ask FixtureCast AI Widget (floating) -->
+    <AskFixtureCastWidget />
 
     <!-- Cookie Consent Banner -->
     <CookieConsent />

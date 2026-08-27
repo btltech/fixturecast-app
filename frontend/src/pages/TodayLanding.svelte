@@ -3,6 +3,7 @@
   import { Link } from "svelte-routing";
   import SEOHead from "../components/SEOHead.svelte";
   import AIRationaleCard from "../components/AIRationaleCard.svelte";
+  import PublicTrapCard from "../components/PublicTrapCard.svelte";
   import { API_URL } from "../config.js";
 
   let loading = true;
@@ -269,6 +270,9 @@
       </div>
 
     </div>
+
+    <!-- Public Trap Detector Warning Card -->
+    <PublicTrapCard trap={data?.public_trap} />
 
     <!-- Verified Track Record Call-To-Action Banner -->
     <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-indigo-950/40 border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl">
