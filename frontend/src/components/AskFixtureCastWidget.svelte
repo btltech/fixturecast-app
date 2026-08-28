@@ -31,7 +31,7 @@
         messages = [...messages, { sender: "bot", text: "I couldn't reach the analysis engine right now. Please try asking again in a moment." }];
       }
     } catch (e) {
-      messages = [...messages, { sender: "bot", text: "Today's top +EV value play is FK Partizan vs Getafe (Over 2.5 Goals @ 2.10, +31.7% EV) and our 4-fold Europa Acca is live @ 3.90 total odds!" }];
+      messages = [...messages, { sender: "bot", text: "Live analysis is currently unavailable. Please check back shortly." }];
     } finally {
       loading = false;
     }
