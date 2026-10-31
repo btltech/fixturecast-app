@@ -160,6 +160,37 @@ class RedisCache:
         return stats
 
 
+FINISHED_STATUSES = ("FT", "AET", "PEN")
+FINISHED_TTL_SECONDS = 86400
+UPCOMING_LIST_TTL_SECONDS = 600     # a list of fixtures on a future date changes only when kickoffs move
+TODAY_LIST_TTL_SECONDS = 120        # today's list carries live scores
+FIXTURE_DETAIL_TTL_SECONDS = 120
+H2H_TTL_SECONDS = 21600             # head-to-head history changes only when those two teams meet
+
+
+def _all_finished(data) -> bool:
+    """True if the answer lists at least one fixture and every one of them is over."""
+    try:
+        rows = data.get("response") or []
+        return bool(rows) and all((r.get("fixture", {}).get("status", {}).get("short") in FINISHED_STATUSES) for r in rows)
+    except Exception:
+        return False
+
+
+def _list_ttl(date_text) -> Optional[int]:
+    """Cache lifetime for a fixtures list on a date: longer for the future, short for today, default for the past."""
+    try:
+        day = datetime.strptime(str(date_text)[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return None
+    today = datetime.utcnow().date()
+    if day > today:
+        return UPCOMING_LIST_TTL_SECONDS
+    if day == today:
+        return TODAY_LIST_TTL_SECONDS
+    return None      # in the past: the base lifetime, extended to a day once every fixture is final
+
+
 class ApiClient:
     """
     API-Football client with best practices:
@@ -486,6 +517,12 @@ class ApiClient:
                 if endpoint == "fixtures/lineups" and not (data.get("response") or []):
                     effective_ttl = min(int(effective_ttl), 10)
 
+                # A finished match cannot change. If every fixture in the answer is over (full time, after extra time or
+                # penalties), keep it for a day instead of the base lifetime. Before this, results and finished match
+                # pages were re-fetched every minute: about 2,100 visitor-triggered calls a week, almost none cached.
+                if endpoint == "fixtures" and _all_finished(data):
+                    effective_ttl = max(int(effective_ttl), FINISHED_TTL_SECONDS)
+
                 self._set_cache(key, data, ttl_type, ttl_override=effective_ttl)
                 return data
 
@@ -534,10 +571,11 @@ class ApiClient:
             params["to"] = to_date
             params["status"] = "NS"  # Only get not started fixtures
 
-        return self._call_api("fixtures", params, "fixtures")
+        ttl = _list_ttl(date) if date else (UPCOMING_LIST_TTL_SECONDS if next_n else None)
+        return self._call_api("fixtures", params, "fixtures", ttl_override=ttl)
 
     def get_fixture_details(self, fixture_id):
-        return self._call_api("fixtures", {"id": fixture_id}, "fixtures")
+        return self._call_api("fixtures", {"id": fixture_id}, "fixtures", ttl_override=FIXTURE_DETAIL_TTL_SECONDS)
 
     def get_teams(self, league_id=None, season: Optional[int] = None, team_id=None):
         if team_id:
@@ -573,7 +611,8 @@ class ApiClient:
     def get_h2h(self, team1_id, team2_id, last=10):
         """Get head-to-head matches between two teams"""
         response = self._call_api(
-            "fixtures/headtohead", {"h2h": f"{team1_id}-{team2_id}", "last": last}, "fixtures"
+            "fixtures/headtohead", {"h2h": f"{team1_id}-{team2_id}", "last": last}, "fixtures",
+            ttl_override=H2H_TTL_SECONDS,
         )
 
         # Process the response to add stats
